@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interfaz Zen accesible para pintar disponibilidad de flotas en Google Sheets">
+  <title>Pintar Disponibilidad — Zen Dashboard</title>
+  <style>
+    /* ─── RESET Y VARIABLES ZEN (WCAG AAA COMPLIANT) ─── */
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "Cascadia Code", "Fira Code", Consolas, "Courier New", monospace;
+      
+      /* Modo Oscuro Zen (Defecto) */
+      --bg-canvas: #090d16;
+      --bg-surface: #131b2e;
+      --bg-surface-elevated: #1c2742;
+      --bg-input: #0e1526;
+      --border-subtle: #273656;
+      --border-strong: #3f5582;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      /* Acentos accesibles (Contraste > 4.5:1) */
+      --accent-primary: #38bdf8;
+      --accent-primary-hover: #0284c7;
+      --accent-primary-text: #041226;
+      --accent-success: #34d399;
+      --accent-warning: #fbbf24;
+      --accent-danger: #f87171;
+      
+      --focus-ring: #38bdf8;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-zen: 0 4px 20px rgba(0, 0, 0, 0.35);
+      --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-theme="light"] {
+      --bg-canvas: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #f1f5f9;
+      --bg-input: #ffffff;
+      --border-subtle: #cbd5e1;
+      --border-strong: #94a3b8;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #64748b;
+      
+      --accent-primary: #0284c7;
+      --accent-primary-hover: #0369a1;
+      --accent-primary-text: #ffffff;
+      --accent-success: #059669;
+      --accent-warning: #d97706;
+      --accent-danger: #dc2626;
+      --focus-ring: #0284c7;
+      --shadow-zen: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* ─── NAVEGACIÓN Y FOCO WCAG ─── */
+    :focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 10px;
+      background: var(--accent-primary);
+      color: var(--accent-primary-text);
+      padding: 8px 16px;
+      z-index: 1000;
+      font-weight: bold;
+      border-radius: var(--radius-sm);
+      transition: top 0.2s;
+    }
+    .skip-link:focus { top: 10px; }
+
+    /* ─── CONTENEDOR PRINCIPAL ─── */
+    .zen-container {
+      max-width: 1080px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ─── HEADER ─── */
+    header.zen-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-success));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #041226;
+      font-weight: 900;
+      font-size: 1.1rem;
+    }
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* ─── TARJETAS ZEN ─── */
+    .zen-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-zen);
+      transition: border-color 0.2s ease;
+    }
+    .zen-card:focus-within {
+      border-color: var(--border-strong);
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ─── TRIGGER HERO (EJECUTAR) ─── */
+    .hero-trigger-box {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+      text-align: center;
+      padding: 2rem 1.5rem;
+      background: linear-gradient(180deg, var(--bg-surface), var(--bg-surface-elevated));
+      border: 1px solid var(--border-strong);
+    }
+    .btn-trigger {
+      background: var(--accent-primary);
+      color: var(--accent-primary-text);
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 0.9rem 2.5rem;
+      border-radius: 9999px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: var(--transition);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+    }
+    .btn-trigger:hover:not(:disabled) {
+      background: var(--accent-primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+    }
+    .btn-trigger:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-success);
+    }
+    .status-dot.running {
+      background: var(--accent-warning);
+      animation: pulse 1s infinite alternate;
+    }
+    .status-dot.error { background: var(--accent-danger); }
+
+    @keyframes pulse {
+      from { opacity: 0.4; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* ─── FORMULARIOS ACCESIBLES ─── */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .help-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+    input[type="text"], select, textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: var(--transition);
+    }
+    input[type="text"]:focus, select:focus, textarea:focus {
+      border-color: var(--accent-primary);
+      outline: none;
+    }
+
+    /* ─── BOTONES SECUNDARIOS ─── */
+    .btn {
+      padding: 0.7rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) {
+      background: var(--border-subtle);
+      border-color: var(--border-strong);
+    }
+    .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+    }
+    .btn-theme {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-main);
+    }
+
+    /* ─── SELECTOR DE PLANILLAS GUARDADAS ─── */
+    .sheet-history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .sheet-card-item {
+      background: var(--bg-input);
+      border: 2px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      transition: var(--transition);
+      text-align: left;
+    }
+    .sheet-card-item:hover {
+      border-color: var(--border-strong);
+    }
+    .sheet-card-item.active {
+      border-color: var(--accent-primary);
+      background: rgba(56, 189, 248, 0.08);
+    }
+    .sheet-card-item .sheet-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sheet-card-item .sheet-id-sub {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ─── MAPEO DE COLUMNAS DISPO ─── */
+    .cols-chip-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      padding: 0.75rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .col-chip {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .col-chip .col-day {
+      color: var(--accent-primary);
+      font-weight: 700;
+    }
+
+    /* ─── CONSOLA DE LOGS EN VIVO ─── */
+    .terminal-box {
+      background: #040812;
+      border: 1px solid #1a2744;
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      padding: 1rem;
+      height: 260px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .log-line {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-line.OK   { color: #34d399; }
+    .log-line.INFO { color: #93c5fd; }
+    .log-line.WARN { color: #fde047; }
+    .log-line.ERR  { color: #f87171; font-weight: bold; }
+
+    /* ─── DRAWER / ACORDEÓN DE CAMBIOS MAYORES ─── */
+    details.zen-details {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-input);
+      overflow: hidden;
+    }
+    details.zen-details summary {
+      padding: 0.85rem 1.25rem;
+      cursor: pointer;
+      font-weight: 600;
+      user-select: none;
+      background: var(--bg-surface);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    details.zen-details summary::-webkit-details-marker { display: none; }
+    details.zen-details summary:after {
+      content: "▼";
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+    }
+    details.zen-details[open] summary:after {
+      transform: rotate(180deg);
+    }
+    .details-content {
+      padding: 1.25rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .details-content code {
+      background: var(--bg-surface-elevated);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      color: var(--accent-primary);
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 640px) {
+      .input-row { flex-direction: column; }
+      .header-actions { flex-direction: column-reverse; align-items: flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
+  <div class="zen-container">
+    <!-- ─── HEADER ─── -->
+    <header class="zen-header" role="banner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">✦</div>
+        <div>
+          <h1>Pintar Disponibilidad</h1>
+          <p class="help-text">Servicio Local Autónomo — Google Sheets API v4</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="btn-theme" title="Alternar Modo Oscuro / Claro" aria-label="Alternar tema">
+          🌓
+        </button>
+      </div>
+    </header>
+
+    <!-- ─── CONTENIDO PRINCIPAL ─── -->
+    <main id="main-content" class="zen-container" role="main">
+      
+      <!-- HERO TRIGGER: EJECUTAR PINTADO -->
+      <section class="zen-card hero-trigger-box" aria-labelledby="section-trigger-title">
+        <h2 id="section-trigger-title" class="sr-only" style="position:absolute; width:1px; height:1px; overflow:hidden;">Disparador de Ejecución</h2>
+        
+        <div id="statusBadge" class="status-badge" role="status" aria-live="polite">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Listo para pintar</span>
+        </div>
+
+        <button id="btnEjecutar" class="btn-trigger" type="button" aria-describedby="statusBadge">
+          <span aria-hidden="true">▶</span>
+          <span>Ejecutar Pintado de Disponibilidad</span>
+        </button>
+
+        <p class="help-text" id="activePlanillaLabel">
+          Planilla activa: <strong id="activePlanillaName">Cargando...</strong>
+        </p>
+      </section>
+
+      <!-- SELECCIÓN Y GESTIÓN DE PLANILLAS -->
+      <section class="zen-card" aria-labelledby="sheets-heading">
+        <div class="card-title">
+          <h2 id="sheets-heading">1. Planilla del Mes</h2>
+          <span class="help-text">Selecciona una guardada o ingresa un nuevo enlace</span>
+        </div>
+
+        <!-- Box Inserción de Nueva ID / URL -->
+        <form id="formNuevaPlanilla" onsubmit="event.preventDefault(); inspeccionarYGuardar();">
+          <div class="form-group">
+            <label for="inputSheetId">Insertar nuevo Link o ID de Google Spreadsheet:</label>
+            <div class="input-row">
+              <input 
+                type="text" 
+                id="inputSheetId" 
+                placeholder="https://docs.google.com/spreadsheets/d/14Mb5rD853zxDkaLDS.../edit"
+                required
+                autocomplete="off"
+                aria-describedby="inputSheetHelp"
+              >
+              <button type="submit" id="btnGuardarId" class="btn">
+                <span>Guardar y Activar</span>
+              </button>
+            </div>
+            <p id="inputSheetHelp" class="help-text">
+              Puedes pegar la URL completa del navegador o solo el código ID.
+            </p>
+          </div>
+        </form>
+
+        <!-- Selector de Planillas Guardadas (Historial) -->
+        <fieldset style="border: none; margin-top: 1rem;">
+          <legend class="help-text" style="font-weight: 600; margin-bottom: 0.5rem;">
+            Historial de planillas disponibles:
+          </legend>
+          <div id="sheetHistoryContainer" class="sheet-history-grid" role="radiogroup" aria-label="Planillas guardadas">
+            <!-- Renderizado dinámico -->
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- MAPEO DE COLUMNAS DISPO -->
+      <section class="zen-card" aria-labelledby="mapping-heading">
+        <div class="card-title">
+          <h2 id="mapping-heading">2. Mapeo de Columnas "Dispo."</h2>
+          <button type="button" class="btn btn-sm" onclick="restablecerColumnasStandard()">
+            ↺ Restablecer Estándar (+13 cols)
+          </button>
+        </div>
+        <p class="help-text" style="margin-bottom: 0.75rem;">
+          33 columnas mapeadas (Días 1 al 31). En caso de corrimiento en una nueva planilla, puedes editar los números aquí:
+        </p>
+        
+        <div class="form-group">
+          <label for="inputColsList" class="sr-only">Lista de columnas separadas por comas:</label>
+          <input 
+            type="text" 
+            id="inputColsList" 
+            aria-describedby="colsHelp"
+            placeholder="29, 42, 55, 68, ..."
+          >
+          <p id="colsHelp" class="help-text">
+            Ingresa los números de columna separados por comas. Haz clic en "Guardar Mapeo" para aplicar.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; justify-content: space-between; align-items: center;">
+          <div id="colsVisualChips" class="cols-chip-container" style="flex: 1;" aria-label="Vista previa de columnas">
+            <!-- Chips dinámicos -->
+          </div>
+          <button type="button" class="btn" onclick="guardarMapeoColumnas()">
+            Guardar Mapeo
+          </button>
+        </div>
+      </section>
+
+      <!-- CONSOLA DE LOGS EN VIVO -->
+      <section class="zen-card" aria-labelledby="logs-heading">
+        <div class="card-title">
+          <h2 id="logs-heading">3. Registro de Ejecución en Vivo</h2>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-sm" onclick="copiarLogs()">Copiar Log</button>
+            <button type="button" class="btn btn-sm" onclick="limpiarLogs()">Limpiar</button>
+          </div>
+        </div>
+
+        <div id="terminal" class="terminal-box" role="log" aria-live="polite" tabindex="0">
+          <div class="log-line INFO">[00:00:00] Servicio Zen listo. Presione "Ejecutar Pintado" para iniciar.</div>
+        </div>
+      </section>
+
+      <!-- GUÍA PARA CAMBIOS MAYORES -->
+      <section aria-labelledby="guide-heading">
+        <h2 id="guide-heading" class="sr-only">Guía de Cambios Mayores</h2>
+        <details class="zen-details">
+          <summary>📖 Guía Técnica para Cambios Mayores en la Planilla</summary>
+          <div class="details-content">
+            <p>
+              El código está desacoplado en <code>core.js</code> y <code>config.json</code> para que cualquier cambio estructural sea sencillo:
+            </p>
+            <ul>
+              <li><strong>Si cambian las posiciones de columnas Dispo:</strong> Edita los números directamente en la sección <em>"Mapeo de Columnas"</em> de esta interfaz.</li>
+              <li><strong>Si se agregan nuevas secciones o servicios:</strong> En <code>core.js</code> línea 80, edita el arreglo <code>serviciosHeaders</code> (ej: <code>['LIVIANO', 'METANOL', 'CAMPO', ...]</code>). El script protegerá automáticamente el fondo de esas filas.</li>
+              <li><strong>Si cambian las columnas de Tractor o Semi:</strong> En <code>core.js</code> función <code>leerUnidades()</code>, modifica <code>row[4]</code> (Col E) o <code>row[5]</code> (Col F).</li>
+              <li><strong>Si cambia la base de datos:</strong> En <code>core.js</code> función <code>construirMapaVenc()</code>, modifica el rango de fechas <code>[row[1], row[2], ...]</code>.</li>
+            </ul>
+          </div>
+        </details>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // ─── ESTADO GLOBAL ZEN ───
+    let currentConfig = null;
+
+    // ─── TEMA CLARO / OSCURO ───
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('zen-theme', next);
+    });
+
+    const savedTheme = localStorage.getItem('zen-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    // ─── CARGAR CONFIGURACIÓN DESDE EL BACKEND ───
+    async function cargarConfiguracion() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        currentConfig = data;
+
+        // Planilla activa
+        document.getElementById('inputSheetId').value = data.spreadsheetId || '';
+        document.getElementById('activePlanillaName').textContent = data.spreadsheetId || 'Ninguna seleccionada';
+
+        // Columnas
+        const cols = data.colsDispo || [];
+        document.getElementById('inputColsList').value = cols.join(', ');
+        renderizarChipsColumnas(cols);
+
+        // Historial
+        renderizarHistorial(data.planillasGuardadas || [], data.spreadsheetId);
+
+        // Si tenemos la planilla activa en el historial, mostrar su nombre amigable
+        const activa = (data.planillasGuardadas || []).find(p => p.id === data.spreadsheetId);
+        if (activa) {
+          document.getElementById('activePlanillaName').textContent = activa.nombre || activa.id;
+        }
+      } catch (err) {
+        addLog('ERR', `Error conectando con el servidor: ${err.message}`);
+      }
+    }
+
+    // ─── RENDERIZAR CHIPS DE COLUMNAS ───
+    function renderizarChipsColumnas(cols) {
+      const container = document.getElementById('colsVisualChips');
+      container.innerHTML = '';
+      cols.forEach((col, idx) => {
+        const chip = document.createElement('span');
+        chip.className = 'col-chip';
+        chip.innerHTML = `<span class="col-day">D${idx + 1}</span> Col ${col}`;
+        container.appendChild(chip);
+      });
+    }
+
+    // ─── RENDERIZAR HISTORIAL DE PLANILLAS ───
+    function renderizarHistorial(lista, idActivo) {
+      const container = document.getElementById('sheetHistoryContainer');
+      container.innerHTML = '';
+
+      if (lista.length === 0) {
+        container.innerHTML = '<p class="help-text">No hay planillas guardadas aún.</p>';
+        return;
+      }
+
+      lista.forEach(item => {
+        const card = document.createElement('div');
+        const esActiva = (item.id === idActivo);
+        card.className = `sheet-card-item ${esActiva ? 'active' : ''}`;
+        card.setAttribute('role', 'radio');
+        card.setAttribute('aria-checked', esActiva ? 'true' : 'false');
+        card.tabIndex = 0;
+
+        card.innerHTML = `
+          <div class="sheet-name">
+            <span>${item.nombre || 'Planilla'}</span>
+            ${esActiva ? '<span style="color:var(--accent-primary); font-size:0.8rem;">● Activa</span>' : ''}
+          </div>
+          <div class="sheet-id-sub">${item.id}</div>
+        `;
+
+        card.onclick = () => seleccionarPlanilla(item.id, item.nombre);
+        card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') seleccionarPlanilla(item.id, item.nombre); };
+
+        container.appendChild(card);
+      });
+    }
+
+    // ─── SELECCIONAR PLANILLA DEL HISTORIAL ───
+    async function seleccionarPlanilla(id, nombre) {
+      document.getElementById('inputSheetId').value = id;
+      document.getElementById('activePlanillaName').textContent = nombre || id;
+      
+      try {
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spreadsheetId: id })
+        });
+        addLog('INFO', `Planilla activa cambiada a: ${nombre || id}`);
+        cargarConfiguracion();
+      } catch (e) {
+        addLog('ERR', `Error cambiando planilla: ${e.message}`);
+      }
+    }
+
+    // ─── INSPECCIONAR Y GUARDAR NUEVA ID ───
+    async function inspeccionarYGuardar() {
+      const rawInput = document.getElementById('inputSheetId').value.trim();
+      const match = rawInput.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      const sheetId = match ? match[1] : rawInput;
+
+      if (!sheetId) return;
+
+      addLog('INFO', `Validando planilla ${sheetId}...`);
+      const btn = document.getElementById('btnGuardarId');
+      btn.disabled = true;
+      btn.textContent = 'Validando...';
+
+      try {
+        const res = await fetch('/api/inspect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spreadsheetId: sheetId })
+        });
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        addLog('OK', `Planilla válida: "${data.title}" (Pestaña: ${data.movSheet})`);
+
+        // Guardar en config
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            spreadsheetId: sheetId,
+            planillasGuardadas: [
+              { id: sheetId, nombre: data.title, pestaña: data.movSheet },
+              ...(currentConfig.planillasGuardadas || []).filter(p => p.id !== sheetId)
+            ].slice(0, 12)
+          })
+        });
+
+        addLog('OK', 'Planilla guardada y seleccionada como activa.');
+        cargarConfiguracion();
+      } catch (err) {
+        addLog('ERR', `Error validando planilla: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar y Activar';
+      }
+    }
+
+    // ─── GUARDAR Y RESTABLECER COLUMNAS ───
+    async function guardarMapeoColumnas() {
+      const raw = document.getElementById('inputColsList').value;
+      const cols = raw.split(',')
+        .map(v => parseInt(v.trim(), 10))
+        .filter(v => !isNaN(v) && v > 0);
+
+      if (cols.length === 0) {
+        alert('Ingrese al menos un número de columna válido.');
+        return;
+      }
+
+      try {
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ colsDispo: cols })
+        });
+        renderizarChipsColumnas(cols);
+        addLog('OK', `Mapeo de ${cols.length} columnas guardado con éxito.`);
+      } catch (e) {
+        addLog('ERR', `Error guardando columnas: ${e.message}`);
+      }
+    }
+
+    function restablecerColumnasStandard() {
+      const standard = [
+        29, 42, 55, 68, 81, 94, 107, 120, 133, 146, 159,
+        172, 185, 198, 211, 224, 237, 250, 263, 276, 289, 302,
+        315, 328, 341, 354, 367, 380, 393, 406, 415, 419, 428
+      ];
+      document.getElementById('inputColsList').value = standard.join(', ');
+      guardarMapeoColumnas();
+    }
+
+    // ─── EJECUTAR PINTADO CON STREAMING DE LOGS ───
+    const btnEjecutar = document.getElementById('btnEjecutar');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+
+    btnEjecutar.addEventListener('click', async () => {
+      btnEjecutar.disabled = true;
+      statusDot.className = 'status-dot running';
+      statusText.textContent = 'Pintando disponibilidad en Google Sheets...';
+      addLog('INFO', '════════════════════════════════════════════════════════');
+      addLog('INFO', 'INICIANDO PROCESO DE DISPONIBILIDAD...');
+
+      try {
+        const response = await fetch('/api/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spreadsheetId: currentConfig.spreadsheetId })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop(); // Guardar residuo
+
+          for (const block of lines) {
+            const matchEvent = block.match(/event:\s*(\w+)/);
+            const matchData  = block.match(/data:\s*(.+)/);
+            if (matchData) {
+              const eventType = matchEvent ? matchEvent[1] : 'message';
+              const eventData = JSON.parse(matchData[1]);
+
+              if (eventType === 'log') {
+                addLog(eventData.level, eventData.message);
+              } else if (eventType === 'done') {
+                statusDot.className = 'status-dot';
+                statusText.textContent = `Pintado exitoso en ${eventData.duracionSegundos}s (${eventData.alertas.total} alertas)`;
+                addLog('OK', `FINALIZADO CON ÉXITO en ${eventData.duracionSegundos}s`);
+              } else if (eventType === 'error') {
+                throw new Error(eventData.error);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        statusDot.className = 'status-dot error';
+        statusText.textContent = 'Error en la ejecución';
+        addLog('ERR', `Error: ${err.message}`);
+      } finally {
+        btnEjecutar.disabled = false;
+      }
+    });
+
+    // ─── GESTOR DE TERMINAL DE LOGS ───
+    const terminal = document.getElementById('terminal');
+
+    function addLog(level, message) {
+      const line = document.createElement('div');
+      line.className = `log-line ${level}`;
+      const time = new Date().toLocaleTimeString('es-AR');
+      line.textContent = `[${time}] ${message}`;
+      terminal.appendChild(line);
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function limpiarLogs() {
+      terminal.innerHTML = '<div class="log-line INFO">[00:00:00] Consola limpia.</div>';
+    }
+
+    function copiarLogs() {
+      const text = Array.from(terminal.querySelectorAll('.log-line'))
+        .map(el => el.textContent)
+        .join('\n');
+      navigator.clipboard.writeText(text).then(() => {
+        addLog('OK', 'Registros copiados al portapapeles.');
+      });
+    }
+
+    // ─── INICIALIZACIÓN ───
+    cargarConfiguracion();
+  </script>
+</body>
+</html>

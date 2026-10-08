@@ -1,0 +1,800 @@
+{
+  "name": "Operativas Integradas - Cordillera, Movimientos & Disponibilidad (Cloud & Local)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# 🚀 LIENZO OPERATIVO INTEGRADO: CORDILLERA, MOVIMIENTOS & DISPONIBILIDAD\n**Plataforma centralizada de automatización y sincronización multi-tarea.**\n- **Tarea 1 (Tracking Col H):** Inyecta historial de tracking desde Ruteos hacia notas en hover en Movimientos Mensual (`sync_ruteos_movimientos.py`).\n- **Tarea 2 (VACÍO Col X):** Inyecta reporte de VACÍO al inicio de la nota con doble enmarcado de bordes (`sync_vacio.py`).\n- **Tarea 3 (Seguimiento Vacío):** Pinta en celeste `#9fc5e8` unidades con reporte de VACÍO sin nuevo TD asignado y limpia automáticamente (`sync_seguimiento_vacio.py`).\n- **Tarea 4 (Disponibilidad VTV):** Semáforo de habilitaciones en 33 columnas Dispo protegiendo cabeceras de servicio (`pintarDisponibilidad.js`).\n- **Tarea 5 (Viajes Cordillera):** Filtro geográfico de 21 localidades cordilleranas por TD hacia `SEGURIDA VIAL` (`main.py --seguridad-vial`).\n- **Tarea 6 (CONF. DE VIAJE):** Detección de viajes 'sujeto a seguimiento' en Col W hacia `CONF. DE VIAJE` (`main.py --conf-viaje`).\n- **Tarea 7 (Limpieza VACÍO):** Mantenimiento administrativo y reseteo de VACÍO / bordes ante arreglos de sheets (`limpiar_vacio.py`).\n\n*Las tareas 1-6 cuentan con Disparador Manual Individual, Cron Job y conexión al Orquestador Global Maestro. La Tarea 7 cuenta con Disparador Manual Individual.*",
+        "height": 280,
+        "width": 1720,
+        "color": 6
+      },
+      "id": "note-banner-main",
+      "name": "Banner: Lienzo Unificado Operativo",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 🌐 ORQUESTADOR GLOBAL\nDisparador maestro para ejecutar **todas** las tareas del circuito operativo en lote con un solo clic.\n\n> 💡 **Uso:** Haz clic en *\"Test step\"* en el Disparador Maestro para correr la sincronización global de las 6 tareas operativas.\n>\n> Cada carril individual también cuenta con su propio disparador manual aislado.",
+        "height": 2720,
+        "width": 330,
+        "color": 7
+      },
+      "id": "note-master-trigger",
+      "name": "Nota: Orquestador Global",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trig-master-manual",
+      "name": "🚀 Disparador Maestro (Ejecutar Todo)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -370,
+        950
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📍 TAREA 1: HOVER TRACKING (RUTEOS ➡️ MOVIMIENTOS)\n- **Origen:** Planilla Ruteos (`1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o`), Col H (Tracking).\n- **Destino:** Planilla Mensual Movimientos (`14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc`).\n- **Regla:** Mapea destinos limpios y ranuras de camión (doble ranura por día) en notas hover. Preserva encabezados de VACÍO.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 sync_ruteos_movimientos.py --apply`",
+        "height": 340,
+        "width": 1350,
+        "color": 4
+      },
+      "id": "note-lane-tracking",
+      "name": "Nota: Tarea 1 - Tracking Hover",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trig-manual-tracking",
+      "name": "Disparador Manual: Tracking (Col H)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "cron-tracking",
+      "name": "⏰ Cron: Tracking Hover (Cada 15m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_ruteos_movimientos.py --apply\""
+      },
+      "id": "exec-tracking",
+      "name": "Ejecutar Sync Tracking (Col H)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        380,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización Tracking Hover (Col H)\",\n    origen: \"Ruteos (Col H)\",\n    destino: \"Movimientos Unidades y Choferes\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-4).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-tracking",
+      "name": "Resumen Tracking (Col H)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📦 TAREA 2: VACÍO CON BORDES (RUTEOS ➡️ MOVIMIENTOS)\n- **Origen:** Planilla Ruteos, Col X (Reporte de Vacío).\n- **Destino:** Planilla Mensual Movimientos.\n- **Regla:** Antepone `VACIO [fecha hora]` al inicio de la nota y aplica bordes dobles `SOLID_MEDIUM` (inferior e izquierdo) para detección visual inmediata. Preserva el texto de tracking inferior.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 sync_vacio.py --apply --borders`",
+        "height": 340,
+        "width": 1350,
+        "color": 5
+      },
+      "id": "note-lane-vacio",
+      "name": "Nota: Tarea 2 - VACÍO con Bordes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        390
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trig-manual-vacio",
+      "name": "Disparador Manual: VACIO (Col X)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 20
+            }
+          ]
+        }
+      },
+      "id": "cron-vacio",
+      "name": "⏰ Cron: VACIO Bordes (Cada 20m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        590
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_vacio.py --apply --borders\""
+      },
+      "id": "exec-vacio",
+      "name": "Ejecutar Sync VACIO (Col X)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        380,
+        510
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización VACÍO con Bordes (Col X)\",\n    origen: \"Ruteos (Col X)\",\n    destino: \"Movimientos Unidades y Choferes\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-4).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-vacio",
+      "name": "Resumen VACIO (Col X)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        510
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🔍 TAREA 3: SEGUIMIENTO VACÍO (SIN NUEVO TD ➡️ PINTADO #9fc5e8)\n- **Origen:** Planilla Ruteos, Col X (Reporte de Vacío) + Col L (Último TD del tractor).\n- **Destino:** Planilla Mensual Movimientos, celda del día operativo.\n- **Regla:** Si un tractor reportó VACÍO y aún NO posee un nuevo viaje/TD asignado, y la columna 'Dispo.' no está en localidades excluidas (`dock sud, tds, tlc, tlp, tvm, pp...`), pinta la celda en celeste `#9fc5e8`. Si se asigna un nuevo viaje o cambia Dispo, se limpia automáticamente restaurando el fondo base.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 sync_seguimiento_vacio.py --apply`",
+        "height": 340,
+        "width": 1350,
+        "color": 5
+      },
+      "id": "note-lane-seguimiento-vacio",
+      "name": "Nota: Tarea 3 - Seguimiento Vacío (#9fc5e8)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        780
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trig-manual-seguimiento-vacio",
+      "name": "Disparador Manual: Seguimiento Vacío (#9fc5e8)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        830
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "cron-seguimiento-vacio",
+      "name": "⏰ Cron: Seguimiento Vacío (Cada 15m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_seguimiento_vacio.py --apply\""
+      },
+      "id": "exec-seguimiento-vacio",
+      "name": "Ejecutar Sync Seguimiento Vacío",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        380,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización Seguimiento Vacío (#9fc5e8)\",\n    origen: \"Ruteos (Col X & Col L)\",\n    destino: \"Movimientos Unidades (Celeste #9fc5e8)\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-4).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-seguimiento-vacio",
+      "name": "Resumen Seguimiento Vacío",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🎨 TAREA 4: PINTAR DISPONIBILIDAD (VTV & HABILITACIONES)\n- **Origen:** Base Vencimientos + Configuración activa (`config.json`).\n- **Destino:** 33 Columnas `Dispo.` en Movimientos Mensual.\n- **Regla:** Pinta según vencimiento: 🔴 Rojo (<0 d, vencido), 🔵 Azul (<=10 d, próx. a vencer), ⬜ Normal (#F5F7FA). Protege intactas las cabeceras de servicio (`LIVIANO`, `METANOL`, `CAMPO`, `GLP`, etc.).\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `node pintarDisponibilidad.js`",
+        "height": 340,
+        "width": 1350,
+        "color": 2
+      },
+      "id": "note-lane-dispo",
+      "name": "Nota: Tarea 4 - Pintar Disponibilidad",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        1170
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trig-manual-dispo",
+      "name": "Disparador Manual: Pintar Disponibilidad",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        1220
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-dispo",
+      "name": "⏰ Cron: Disponibilidad (Diario 06:00 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1370
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && node pintarDisponibilidad.js\""
+      },
+      "id": "exec-dispo",
+      "name": "Ejecutar Pintado de Disponibilidad",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        380,
+        1290
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Pintar Disponibilidad (VTV & Habilitaciones)\",\n    origen: \"base datos Uni QM\",\n    destino: \"Movimientos Unidades y Choferes\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-4).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-dispo",
+      "name": "Resumen Pintar Disponibilidad",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        1290
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🏔️ TAREA 5: VIAJES CORDILLERA ➡️ SEGURIDA VIAL\n- **Origen:** Ruteos (`1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o`).\n- **Destino:** Pestaña `SEGURIDA VIAL` (Columnas contiguas A:V).\n- **Regla:** Viaje completo por TD (Col L) si al menos una parada tiene destino a Cordillera (21 localidades declaradas). Sincroniza 22 columnas ordenadas.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 main.py --seguridad-vial`",
+        "height": 340,
+        "width": 1350,
+        "color": 1
+      },
+      "id": "note-lane-seguridad",
+      "name": "Nota: Tarea 5 - Viajes Cordillera",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        1560
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trig-manual-seguridad",
+      "name": "Disparador Manual: Viajes Cordillera",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        1610
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "cron-seguridad",
+      "name": "⏰ Cron: Viajes Cordillera (Cada 10m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 main.py --seguridad-vial\""
+      },
+      "id": "exec-seguridad",
+      "name": "Ejecutar Sync Viajes Cordillera",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        380,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización Viajes Cordillera ➡️ SEGURIDA VIAL\",\n    origen: \"Ruteos\",\n    destino: \"SEGURIDA VIAL\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-5).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-seguridad",
+      "name": "Resumen Viajes Cordillera",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 📋 TAREA 6: UTE CORDILLERA ➡️ CONF. DE VIAJE\n- **Origen:** Pestaña `UTE Cordillera` (`1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU`).\n- **Destino:** Pestaña `CONF. DE VIAJE` (desde fila 5).\n- **Regla:** Viaje completo por TD (Col I) si contiene 'sujeto a seguimiento' en Col W/V. Escribe 10 columnas limpias con cliente formateado.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 main.py --conf-viaje`",
+        "height": 340,
+        "width": 1350,
+        "color": 6
+      },
+      "id": "note-lane-conf-viaje",
+      "name": "Nota: Tarea 6 - CONF. DE VIAJE",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        1950
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trig-manual-conf-viaje",
+      "name": "Disparador Manual: CONF. DE VIAJE",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        2000
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "cron-conf-viaje",
+      "name": "⏰ Cron: CONF. DE VIAJE (Cada 10m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        2150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 main.py --conf-viaje\""
+      },
+      "id": "exec-conf-viaje",
+      "name": "Ejecutar Sync CONF. DE VIAJE",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        380,
+        2070
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización UTE Cordillera ➡️ CONF. DE VIAJE\",\n    origen: \"UTE Cordillera\",\n    destino: \"CONF. DE VIAJE\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-5).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-conf-viaje",
+      "name": "Resumen CONF. DE VIAJE",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        2070
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 🧹 TAREA 7: LIMPIEZA DE VACÍO Y RESET (MOVIMIENTOS)\n- **Destino:** Planilla Mensual Movimientos (`14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc`).\n- **Propósito:** Herramienta administrativa para limpiar o resetear encabezados de VACÍO y bordes en hover notes ante arreglos de sheets o corrección de falsos positivos. Preserva intacto el tracking de Col H.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 limpiar_vacio.py --apply`\n\n*⚠️ Este carril posee únicamente DISPARADOR MANUAL INDIVIDUAL para evitar limpiezas accidentales no supervisadas. No está vinculado a ningún cron automático ni al orquestador general.*",
+        "height": 340,
+        "width": 1350,
+        "color": 3
+      },
+      "id": "note-lane-limpiar-vacio",
+      "name": "Nota: Tarea 7 - Limpieza de VACÍO (Reset / Cleanup)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        2340
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "trig-manual-limpiar-vacio",
+      "name": "Disparador Manual: Limpiar VACIO (Reset / Fix)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        2460
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 limpiar_vacio.py --apply\""
+      },
+      "id": "exec-limpiar-vacio",
+      "name": "Ejecutar Limpieza VACIO",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        380,
+        2460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Limpieza y Reseteo de VACÍO / Bordes\",\n    destino: \"Movimientos Unidades y Choferes\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-4).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "parse-limpiar-vacio",
+      "name": "Resumen Limpieza VACIO",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        2460
+      ]
+    }
+  ],
+  "connections": {
+    "Disparador Manual: Tracking (Col H)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync Tracking (Col H)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Cron: Tracking Hover (Cada 15m)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync Tracking (Col H)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Sync Tracking (Col H)": {
+      "main": [
+        [
+          {
+            "node": "Resumen Tracking (Col H)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparador Manual: VACIO (Col X)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync VACIO (Col X)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Cron: VACIO Bordes (Cada 20m)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync VACIO (Col X)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Sync VACIO (Col X)": {
+      "main": [
+        [
+          {
+            "node": "Resumen VACIO (Col X)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparador Manual: Seguimiento Vacío (#9fc5e8)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync Seguimiento Vacío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Cron: Seguimiento Vacío (Cada 15m)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync Seguimiento Vacío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Sync Seguimiento Vacío": {
+      "main": [
+        [
+          {
+            "node": "Resumen Seguimiento Vacío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparador Manual: Pintar Disponibilidad": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Pintado de Disponibilidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Cron: Disponibilidad (Diario 06:00 AM)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Pintado de Disponibilidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Pintado de Disponibilidad": {
+      "main": [
+        [
+          {
+            "node": "Resumen Pintar Disponibilidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparador Manual: Viajes Cordillera": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync Viajes Cordillera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Cron: Viajes Cordillera (Cada 10m)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync Viajes Cordillera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Sync Viajes Cordillera": {
+      "main": [
+        [
+          {
+            "node": "Resumen Viajes Cordillera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparador Manual: CONF. DE VIAJE": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync CONF. DE VIAJE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Cron: CONF. DE VIAJE (Cada 10m)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync CONF. DE VIAJE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Sync CONF. DE VIAJE": {
+      "main": [
+        [
+          {
+            "node": "Resumen CONF. DE VIAJE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🚀 Disparador Maestro (Ejecutar Todo)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Sync Tracking (Col H)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ejecutar Sync VACIO (Col X)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ejecutar Sync Seguimiento Vacío",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ejecutar Pintado de Disponibilidad",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ejecutar Sync Viajes Cordillera",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ejecutar Sync CONF. DE VIAJE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disparador Manual: Limpiar VACIO (Reset / Fix)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Limpieza VACIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Limpieza VACIO": {
+      "main": [
+        [
+          {
+            "node": "Resumen Limpieza VACIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

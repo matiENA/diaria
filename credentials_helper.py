@@ -1,0 +1,121 @@
+"""
+credentials_helper.py
+Helper centralizado y resiliente para autenticación con Google Cloud en entornos locales y Cloud (Render).
+Soporta:
+1. Variable de entorno GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_CREDENTIALS_JSON (JSON string o Base64).
+2. Variable de entorno GOOGLE_SERVICE_ACCOUNT_FILE / GOOGLE_APPLICATION_CREDENTIALS.
+3. Archivos locales en ./gs account/, ./credentials.json, ./ute-logistica-key.json.
+4. Rutas estándar en Desktop para compatibilidad local con Windows.
+"""
+import os
+import json
+import base64
+from pathlib import Path
+from typing import Optional, List
+from google.oauth2.service_account import Credentials
+
+DEFAULT_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+BASE_DIR = Path(__file__).resolve().parent
+
+def get_google_credentials(scopes: Optional[List[str]] = None) -> Credentials:
+    """
+    Obtiene las credenciales de Google Service Account priorizando variables de entorno de nube
+    y retrocediendo limpiamente a archivos locales o de desarrollo.
+    """
+    scopes = scopes or DEFAULT_SCOPES
+
+    # 1. Variable de entorno con el JSON en texto o base64 (Estándar de Render)
+    raw_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or os.getenv("GOOGLE_CREDENTIALS_JSON")
+    if raw_json and raw_json.strip():
+        raw_str = raw_json.strip()
+        try:
+            if raw_str.startswith("{"):
+                info = json.loads(raw_str)
+            else:
+                # Intento decodificar base64 si no empieza con llave
+                decoded = base64.b64decode(raw_str).decode("utf-8")
+                info = json.loads(decoded)
+            return Credentials.from_service_account_info(info, scopes=scopes)
+        except Exception as e:
+            print(f"[credentials_helper] Advertencia: Error al parsear JSON desde variable de entorno: {e}")
+
+    # 2. Variable de entorno con ruta de archivo
+    file_env = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if file_env and Path(file_env).exists():
+        return Credentials.from_service_account_file(file_env, scopes=scopes)
+
+    # 3. Buscar en el directorio del proyecto
+    local_candidates = [
+        BASE_DIR / "credentials.json",
+        BASE_DIR / "ute-logistica-key.json",
+        BASE_DIR / "gs account"
+    ]
+    for cand in local_candidates:
+        if cand.is_file():
+            return Credentials.from_service_account_file(str(cand), scopes=scopes)
+        if cand.is_dir():
+            for f in cand.glob("*.json"):
+                return Credentials.from_service_account_file(str(f), scopes=scopes)
+
+    # 4. Búsqueda en rutas de desarrollo local (Desktop)
+    desktop_candidates = [
+        Path.home() / "Desktop" / "gs account",
+        Path.home() / "Desktop"
+    ]
+    for folder in desktop_candidates:
+        if folder.exists():
+            for f in folder.glob("*adminsdk*.json"):
+                return Credentials.from_service_account_file(str(f), scopes=scopes)
+            for f in folder.glob("*.json"):
+                if "ute-logistica" in f.name.lower() or "firebase" in f.name.lower():
+                    return Credentials.from_service_account_file(str(f), scopes=scopes)
+
+    # 5. Ruta predeterminada histórica si existe
+    fallback_path = Path(r"C:\Users\Matias Rodriguez\Desktop\gs account\ute-logistica-firebase-adminsdk-fbsvc-04f3a4a36e.json")
+    if fallback_path.exists():
+        return Credentials.from_service_account_file(str(fallback_path), scopes=scopes)
+
+    raise FileNotFoundError(
+        "No se encontraron credenciales de Google Service Account. "
+        "Configura la variable de entorno GOOGLE_SERVICE_ACCOUNT_JSON en Render o coloca el archivo credentials.json."
+    )
+
+def resolve_credentials_file() -> str:
+    """Para compatibilidad con funciones que requieran la ruta del archivo."""
+    file_env = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if file_env and Path(file_env).exists():
+        return file_env
+
+    candidates = [
+        BASE_DIR / "credentials.json",
+        BASE_DIR / "ute-logistica-key.json",
+        BASE_DIR / "gs account"
+    ]
+    for cand in candidates:
+        if cand.is_file():
+            return str(cand)
+        if cand.is_dir():
+            for f in cand.glob("*.json"):
+                return str(f)
+
+    desktop_candidates = [
+        Path.home() / "Desktop" / "gs account",
+        Path.home() / "Desktop"
+    ]
+    for folder in desktop_candidates:
+        if folder.exists():
+            for f in folder.glob("*adminsdk*.json"):
+                return str(f)
+            for f in folder.glob("*.json"):
+                if "ute-logistica" in f.name.lower() or "firebase" in f.name.lower():
+                    return str(f)
+
+    fallback_path = Path(r"C:\Users\Matias Rodriguez\Desktop\gs account\ute-logistica-firebase-adminsdk-fbsvc-04f3a4a36e.json")
+    if fallback_path.exists():
+        return str(fallback_path)
+
+    return str(BASE_DIR / "credentials.json")
