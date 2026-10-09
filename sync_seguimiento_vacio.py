@@ -207,7 +207,7 @@ class SeguimientoVacioSync:
         self.ruteos_id = ruteos_id
         self.mov_id = mov_id
         self._cached_sheet_id: Optional[int] = None
-        if credentials_path:
+        if credentials_path and Path(credentials_path).exists():
             self.creds_path = credentials_path
             self._creds = Credentials.from_service_account_file(self.creds_path, scopes=SCOPES)
         else:

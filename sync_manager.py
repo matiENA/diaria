@@ -25,13 +25,13 @@ from conf_viaje_service import ConfViajeService
 class SyncManager:
     def __init__(
         self,
-        credentials_path: str = SERVICE_ACCOUNT_FILE,
+        credentials_path: Optional[str] = None,
         spreadsheet_id: Optional[str] = None,
         seguridad_vial_spreadsheet_id: str = SEGURIDAD_VIAL_SPREADSHEET_ID,
         conf_spreadsheet_id: str = CONF_SPREADSHEET_ID,
         state_file: Path = STATE_FILE
     ):
-        self.credentials_path = credentials_path
+        self.credentials_path = credentials_path or SERVICE_ACCOUNT_FILE
         self.seguridad_vial_spreadsheet_id = spreadsheet_id or seguridad_vial_spreadsheet_id
         self.conf_spreadsheet_id = spreadsheet_id or conf_spreadsheet_id
         self.spreadsheet_id = spreadsheet_id or self.seguridad_vial_spreadsheet_id

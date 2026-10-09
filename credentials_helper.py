@@ -32,16 +32,24 @@ def get_google_credentials(scopes: Optional[List[str]] = None) -> Credentials:
     raw_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or os.getenv("GOOGLE_CREDENTIALS_JSON")
     if raw_json and raw_json.strip():
         raw_str = raw_json.strip()
+        # Eliminar posibles comillas externas
+        if (raw_str.startswith("'") and raw_str.endswith("'")) or (raw_str.startswith('"') and raw_str.endswith('"')):
+            raw_str = raw_str[1:-1].strip()
+
+        info = None
         try:
-            if raw_str.startswith("{"):
-                info = json.loads(raw_str)
-            else:
-                # Intento decodificar base64 si no empieza con llave
+            info = json.loads(raw_str)
+        except Exception:
+            try:
                 decoded = base64.b64decode(raw_str).decode("utf-8")
                 info = json.loads(decoded)
+            except Exception as e:
+                print(f"[credentials_helper] Advertencia: Error al parsear JSON desde GOOGLE_SERVICE_ACCOUNT_JSON: {e}")
+
+        if info and isinstance(info, dict):
+            if "private_key" in info and "\\n" in info["private_key"]:
+                info["private_key"] = info["private_key"].replace("\\n", "\n")
             return Credentials.from_service_account_info(info, scopes=scopes)
-        except Exception as e:
-            print(f"[credentials_helper] Advertencia: Error al parsear JSON desde variable de entorno: {e}")
 
     # 2. Variable de entorno con ruta de archivo
     file_env = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")

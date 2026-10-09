@@ -204,7 +204,7 @@ class VacioSync:
     ):
         self.ruteos_id = ruteos_id
         self.mov_id = mov_id
-        if credentials_path:
+        if credentials_path and Path(credentials_path).exists():
             self.creds_path = credentials_path
             self._creds = Credentials.from_service_account_file(self.creds_path, scopes=SCOPES)
         else:

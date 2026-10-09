@@ -2,6 +2,7 @@
 Cliente para interactuar con Google Sheets API v4.
 Maneja autenticación, lectura de Ruteos y escritura en SEGURIDA VIAL.
 """
+from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -26,7 +27,7 @@ SCOPES = [
 class GoogleSheetsClient:
     def __init__(self, credentials_path: str = None, spreadsheet_id: str = DEFAULT_SPREADSHEET_ID):
         self.spreadsheet_id = spreadsheet_id
-        if credentials_path:
+        if credentials_path and Path(credentials_path).exists():
             self._creds = Credentials.from_service_account_file(credentials_path, scopes=SCOPES)
         else:
             self._creds = get_google_credentials(scopes=SCOPES)

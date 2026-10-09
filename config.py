@@ -29,12 +29,12 @@ def resolve_credentials_file() -> str:
         for json_file in desktop_gs.glob("*.json"):
             return str(json_file)
 
-    # 4. Ruta predeterminada histórica
+    # 4. Ruta predeterminada histórica si existe
     default_path = Path(r"C:\Users\Matias Rodriguez\Desktop\gs account\ute-logistica-firebase-adminsdk-fbsvc-04f3a4a36e.json")
     if default_path.exists():
         return str(default_path)
 
-    return str(default_path)
+    return None
 
 SERVICE_ACCOUNT_FILE = resolve_credentials_file()
 
