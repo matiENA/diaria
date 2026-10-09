@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -122,6 +123,131 @@ def run_command(cmd: list, key: str) -> Dict[str, Any]:
 # ==============================================================================
 # ENDPOINTS REST
 # ==============================================================================
+
+@app.get("/", response_class=HTMLResponse)
+def root_dashboard():
+    sched_ok = os.getenv("ENABLE_SCHEDULER", "true").lower() == "true"
+    badge_color = "#10b981" if sched_ok else "#f59e0b"
+    badge_text = "ACTIVO 24/7" if sched_ok else "MANUAL"
+    html_content = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicio de Operativas Diarias (Render Cloud)</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }}
+        .card {{
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 100%;
+            padding: 32px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+        }}
+        h1 {{
+            font-size: 1.5rem;
+            margin: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .badge {{
+            display: inline-block;
+            background: {badge_color};
+            color: #0f172a;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+        }}
+        p {{
+            color: #94a3b8;
+            margin: 0 0 24px 0;
+            line-height: 1.5;
+        }}
+        .links {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 24px;
+        }}
+        .btn {{
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }}
+        .btn-primary {{
+            background: #3b82f6;
+            color: white;
+        }}
+        .btn-primary:hover {{
+            background: #2563eb;
+        }}
+        .btn-secondary {{
+            background: #334155;
+            color: #e2e8f0;
+        }}
+        .btn-secondary:hover {{
+            background: #475569;
+        }}
+        .tasks-list {{
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            margin-top: 20px;
+        }}
+        .tasks-list li {{
+            margin-bottom: 6px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">● {badge_text}</span>
+        <h1 style="margin-top: 12px;">Servicio de Operativas Diarias</h1>
+        <p>Motor de sincronización y automatización en la nube (Render Cloud) para planillas operativas, tracking, vacíos y disponibilidades.</p>
+        
+        <div class="tasks-list">
+            <strong>Tareas programadas:</strong>
+            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                <li>Tracking Hover (Col H) — Cada 15 min</li>
+                <li>VACÍO (Col X) — Cada 20 min</li>
+                <li>Seguimiento Vacío — Cada 15 min</li>
+                <li>Viajes Cordillera — Cada 10 min</li>
+                <li>Confirmación de Viaje — Cada 10 min</li>
+                <li>Disponibilidad VTV — Diario 06:00 AM</li>
+            </ul>
+        </div>
+
+        <div class="links">
+            <a href="/docs" class="btn btn-primary">📖 Swagger UI (/docs)</a>
+            <a href="/status" class="btn btn-secondary">📊 Estado (/status)</a>
+            <a href="/health" class="btn btn-secondary">🩺 Salud (/health)</a>
+        </div>
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
 
 @app.get("/health")
 def health_check():
