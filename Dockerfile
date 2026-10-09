@@ -1,20 +1,19 @@
 # ==============================================================================
 # Dockerfile Multi-Runtime (Python 3.11 + Node.js 20) para Render Cloud
 # ==============================================================================
-FROM python:3.11-slim-bullseye
 
-# Instalar Node.js 20 y utilidades del sistema
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    gnupg \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install -y nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# 1. Base oficial de Node.js 20 (Debian Bookworm)
+FROM node:20-bookworm-slim AS node-base
+
+# 2. Base principal de Python 3.11 (Debian Bookworm)
+FROM python:3.11-slim-bookworm
+
+# Copiar Node.js y NPM directamente desde la imagen oficial
+# (Sin depender de repositorios apt externos o mirrors obsoletos)
+COPY --from=node-base /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-base /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 WORKDIR /app
 
