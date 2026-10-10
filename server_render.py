@@ -152,7 +152,7 @@ def run_command(cmd: list, key: str) -> Dict[str, Any]:
 # ENDPOINTS REST
 # ==============================================================================
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def root_dashboard():
     sched_ok = os.getenv("ENABLE_SCHEDULER", "true").lower() == "true"
     badge_color = "#10b981" if sched_ok else "#f59e0b"
@@ -285,7 +285,7 @@ def root_dashboard():
 </html>"""
     return HTMLResponse(content=html_content)
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {
         "status": "ok",

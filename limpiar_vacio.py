@@ -49,34 +49,6 @@ SCOPES = [
 ]
 
 
-def resolve_credentials_file() -> str:
-    """Busca el archivo de credenciales de Google Service Account en ubicaciones estándar."""
-    env_file = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
-    if env_file and Path(env_file).exists():
-        return env_file
-
-    base_dir = Path(__file__).resolve().parent
-    candidatos = [
-        base_dir / "gs account",
-        base_dir.parent / "sheets" / "gs account",
-        base_dir.parent / "col_h_mov" / "gs account",
-        base_dir.parent / "viajes cordillera" / "gs account",
-        base_dir.parent / "viajes cordillera",
-        base_dir.parent / "sheets",
-        base_dir.parent / "col_h_mov",
-        Path.home() / "Desktop" / "gs account",
-        Path.home() / "Desktop"
-    ]
-    for folder in candidatos:
-        if folder.exists():
-            for json_file in folder.glob("*adminsdk*.json"):
-                return str(json_file)
-            for json_file in folder.glob("*.json"):
-                if "firebase" in json_file.name.lower() or "ute-logistica" in json_file.name.lower():
-                    return str(json_file)
-
-    raise FileNotFoundError("No se encontró ningún archivo de credenciales JSON de Service Account.")
-
 
 def index_to_col_letter(col_idx: int) -> str:
     """Convierte un índice de columna 0-based en letras estilo Excel (0 -> A, 30 -> AE)."""
@@ -186,7 +158,10 @@ class VacioCleaner:
             self._creds = Credentials.from_service_account_file(self.creds_path, scopes=SCOPES)
         else:
             self._creds = get_google_credentials(scopes=SCOPES)
-            self.creds_path = resolve_credentials_file()
+            try:
+                self.creds_path = resolve_credentials_file()
+            except Exception:
+                self.creds_path = None
         self._service = build("sheets", "v4", credentials=self._creds)
 
     def fetch_canonical_ruteos_vacios(self) -> Set[Tuple[str, int]]:

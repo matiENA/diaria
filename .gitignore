@@ -24,6 +24,8 @@ Thumbs.db
 credentials.json
 ute-logistica-key.json
 gs account/
+.service_account_*.json
+*.tmp.json
 
 # Archivos web locales
 public/

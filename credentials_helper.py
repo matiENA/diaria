@@ -102,6 +102,26 @@ def resolve_credentials_file() -> str:
     if file_env and Path(file_env).exists():
         return file_env
 
+    # Si existe variable con el contenido JSON en memoria, guardarlo a disco para herramientas que requieran archivo físico
+    raw_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON") or os.getenv("GOOGLE_CREDENTIALS_JSON")
+    if raw_json and raw_json.strip():
+        runtime_file = BASE_DIR / ".service_account_runtime.json"
+        try:
+            raw_str = raw_json.strip()
+            if (raw_str.startswith("'") and raw_str.endswith("'")) or (raw_str.startswith('"') and raw_str.endswith('"')):
+                raw_str = raw_str[1:-1].strip()
+            try:
+                decoded = base64.b64decode(raw_str).decode("utf-8")
+                if "private_key" in decoded:
+                    raw_str = decoded
+            except Exception:
+                pass
+            if not runtime_file.exists() or runtime_file.stat().st_size == 0:
+                runtime_file.write_text(raw_str, encoding="utf-8")
+            return str(runtime_file)
+        except Exception as e:
+            print(f"[credentials_helper] Advertencia al escribir runtime JSON: {e}")
+
     candidates = [
         BASE_DIR / "credentials.json",
         BASE_DIR / "ute-logistica-key.json",
@@ -131,3 +151,4 @@ def resolve_credentials_file() -> str:
         return str(fallback_path)
 
     return str(BASE_DIR / "credentials.json")
+
