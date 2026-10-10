@@ -146,6 +146,8 @@ class RuteosMovimientosSync:
             except Exception:
                 self.creds_path = None
         self._service = build("sheets", "v4", credentials=self._creds)
+        self._cached_sheet_id: Optional[int] = None
+        self._cached_grid: Optional[List[List[str]]] = None
 
     def fetch_ruteos(self) -> List[List[str]]:
         """Lee todas las filas operativas desde Ruteos (A4 hasta AL)."""
@@ -156,26 +158,35 @@ class RuteosMovimientosSync:
         ).execute()
         return res.get("values", [])
 
-    def fetch_movimientos_grid(self) -> Tuple[int, List[List[str]]]:
+    def fetch_movimientos_grid(self, force_reload: bool = False) -> Tuple[int, List[List[str]]]:
         """
-        Lee la matriz de Movimientos y obtiene el sheetId de la pestaña objetivo.
+        Lee la matriz de Movimientos y obtiene el sheetId de la pestaña objetivo (con caché).
         Retorna (sheetId, rows).
         """
-        meta = self._service.spreadsheets().get(spreadsheetId=self.mov_id).execute()
-        target_sheet_id = None
-        for sheet in meta.get("sheets", []):
-            if sheet["properties"]["title"] == TARGET_TAB_MOV:
-                target_sheet_id = sheet["properties"]["sheetId"]
-                break
-        if target_sheet_id is None:
-            raise ValueError(f"No se encontró la pestaña '{TARGET_TAB_MOV}' en la planilla {self.mov_id}")
+        if not force_reload and self._cached_sheet_id is not None and self._cached_grid is not None:
+            return self._cached_sheet_id, self._cached_grid
+
+        if self._cached_sheet_id is None:
+            meta = self._service.spreadsheets().get(
+                spreadsheetId=self.mov_id,
+                fields="sheets.properties"
+            ).execute()
+            target_sheet_id = None
+            for sheet in meta.get("sheets", []):
+                if sheet["properties"]["title"] == TARGET_TAB_MOV:
+                    target_sheet_id = sheet["properties"]["sheetId"]
+                    break
+            if target_sheet_id is None:
+                raise ValueError(f"No se encontró la pestaña '{TARGET_TAB_MOV}' en la planilla {self.mov_id}")
+            self._cached_sheet_id = target_sheet_id
 
         res = self._service.spreadsheets().values().get(
             spreadsheetId=self.mov_id,
             range=f"'{TARGET_TAB_MOV}'!A1:ZZ400",
             valueRenderOption="FORMATTED_VALUE"
         ).execute()
-        return target_sheet_id, res.get("values", [])
+        self._cached_grid = res.get("values", [])
+        return self._cached_sheet_id, self._cached_grid
 
     def process_assignments(
         self,

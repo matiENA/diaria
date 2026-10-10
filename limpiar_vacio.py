@@ -205,7 +205,7 @@ class VacioCleaner:
 
     def fetch_movimientos_data(self) -> Tuple[int, List[List[Dict[str, Any]]]]:
         """Lee la grilla de Movimientos completa con valores, notas y formato de bordes."""
-        meta = self._service.spreadsheets().get(spreadsheetId=self.mov_id).execute()
+        meta = self._service.spreadsheets().get(spreadsheetId=self.mov_id, fields="sheets.properties").execute()
         target_sheet_id = None
         for sheet in meta.get("sheets", []):
             if sheet["properties"]["title"] == TARGET_TAB_MOV:

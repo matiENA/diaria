@@ -204,7 +204,7 @@ class VacioSync:
         Lee la matriz completa de Movimientos incluyendo 'formattedValue' y 'note'.
         Retorna (target_sheet_id, grid_data).
         """
-        meta = self._service.spreadsheets().get(spreadsheetId=self.mov_id).execute()
+        meta = self._service.spreadsheets().get(spreadsheetId=self.mov_id, fields="sheets.properties").execute()
         target_sheet_id = None
         for sheet in meta.get("sheets", []):
             if sheet["properties"]["title"] == TARGET_TAB_MOV:

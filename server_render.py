@@ -17,9 +17,11 @@ Características:
 
 import os
 import sys
+import gc
 import subprocess
+import threading
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Query
@@ -67,85 +69,96 @@ EXECUTION_STATE: Dict[str, Any] = {
     "all": {"last_run": None, "status": "idle", "duration": 0, "output": ""}
 }
 
+# Bloqueo global de concurrencia: Render Free dispone de 512MB RAM.
+# Previene que dos subprocesos pesados de Google Sheets compitan o saturen la memoria a la vez.
+EXECUTION_LOCK = threading.Lock()
+
 
 def run_command(cmd: list, key: str) -> Dict[str, Any]:
-    """Ejecuta un comando capturando la salida y actualizando el estado."""
+    """Ejecuta un comando capturando la salida y actualizando el estado de forma serializada."""
     t0 = datetime.now()
-    EXECUTION_STATE[key]["status"] = "running"
-    try:
-        proc = subprocess.run(
-            cmd,
-            cwd=str(BASE_DIR),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace"
-        )
-        elapsed = round((datetime.now() - t0).total_seconds(), 2)
-        success = (proc.returncode == 0)
-        stdout_txt = proc.stdout.strip()
-        stderr_txt = proc.stderr.strip()
+    if EXECUTION_LOCK.locked():
+        EXECUTION_STATE[key]["status"] = "waiting (en cola)"
 
-        result = {
-            "task": key,
-            "success": success,
-            "exit_code": proc.returncode,
-            "duration_seconds": elapsed,
-            "timestamp": t0.isoformat(),
-            "output": stdout_txt if success else (stderr_txt or stdout_txt),
-            "errors": stderr_txt if not success else ""
-        }
-        EXECUTION_STATE[key] = {
-            "last_run": t0.isoformat(),
-            "status": "success" if success else "failed",
-            "duration": elapsed,
-            "output": result["output"][:500]
-        }
-
-        # Notificación a Telegram (fallos inmediatos o todas según TELEGRAM_NOTIFY_ALL)
+    with EXECUTION_LOCK:
+        EXECUTION_STATE[key]["status"] = "running"
         try:
-            notify_task_result(
-                task_name=key,
-                success=success,
-                duration=elapsed,
-                error_msg=stderr_txt,
-                output_preview=stdout_txt
+            proc = subprocess.run(
+                cmd,
+                cwd=str(BASE_DIR),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace"
             )
-        except Exception as e_tg:
-            print(f"[TELEGRAM] ⚠️ Error en handler de notificación: {e_tg}")
+            # Forzar limpieza inmediata de memoria tras salida del subproceso
+            gc.collect()
 
-        return result
-    except Exception as e:
-        elapsed = round((datetime.now() - t0).total_seconds(), 2)
-        res_err = {
-            "task": key,
-            "success": False,
-            "exit_code": -1,
-            "duration_seconds": elapsed,
-            "timestamp": t0.isoformat(),
-            "output": "",
-            "errors": str(e)
-        }
-        EXECUTION_STATE[key] = {
-            "last_run": t0.isoformat(),
-            "status": "error",
-            "duration": elapsed,
-            "output": str(e)
-        }
+            elapsed = round((datetime.now() - t0).total_seconds(), 2)
+            success = (proc.returncode == 0)
+            stdout_txt = proc.stdout.strip()
+            stderr_txt = proc.stderr.strip()
 
-        try:
-            notify_task_result(
-                task_name=key,
-                success=False,
-                duration=elapsed,
-                error_msg=str(e),
-                output_preview=""
-            )
-        except Exception as e_tg:
-            print(f"[TELEGRAM] ⚠️ Error en handler de notificación: {e_tg}")
+            result = {
+                "task": key,
+                "success": success,
+                "exit_code": proc.returncode,
+                "duration_seconds": elapsed,
+                "timestamp": t0.isoformat(),
+                "output": stdout_txt if success else (stderr_txt or stdout_txt),
+                "errors": stderr_txt if not success else ""
+            }
+            EXECUTION_STATE[key] = {
+                "last_run": t0.isoformat(),
+                "status": "success" if success else "failed",
+                "duration": elapsed,
+                "output": result["output"][:500]
+            }
 
-        return res_err
+            # Notificación a Telegram (fallos inmediatos o todas según TELEGRAM_NOTIFY_ALL)
+            try:
+                notify_task_result(
+                    task_name=key,
+                    success=success,
+                    duration=elapsed,
+                    error_msg=stderr_txt,
+                    output_preview=stdout_txt
+                )
+            except Exception as e_tg:
+                print(f"[TELEGRAM] ⚠️ Error en handler de notificación: {e_tg}")
+
+            return result
+        except Exception as e:
+            elapsed = round((datetime.now() - t0).total_seconds(), 2)
+            res_err = {
+                "task": key,
+                "success": False,
+                "exit_code": -1,
+                "duration_seconds": elapsed,
+                "timestamp": t0.isoformat(),
+                "output": "",
+                "errors": str(e)
+            }
+            EXECUTION_STATE[key] = {
+                "last_run": t0.isoformat(),
+                "status": "error",
+                "duration": elapsed,
+                "output": str(e)
+            }
+
+            try:
+                notify_task_result(
+                    task_name=key,
+                    success=False,
+                    duration=elapsed,
+                    error_msg=str(e),
+                    output_preview=""
+                )
+            except Exception as e_tg:
+                print(f"[TELEGRAM] ⚠️ Error en handler de notificación: {e_tg}")
+
+            return res_err
 
 
 # ==============================================================================
@@ -383,33 +396,63 @@ def trigger_all(day: Optional[int] = Query(None)):
 # ==============================================================================
 
 if HAS_SCHEDULER and os.getenv("ENABLE_SCHEDULER", "true").lower() == "true":
-    scheduler = BackgroundScheduler(timezone="America/Argentina/Buenos_Aires")
+    scheduler = BackgroundScheduler(
+        timezone="America/Argentina/Buenos_Aires",
+        job_defaults={
+            "coalesce": True,        # Si se atrasó por cola, no acumula disparos repetidos
+            "max_instances": 1       # Una sola instancia activa por tarea
+        }
+    )
 
-    # 1. Tracking: cada 15m
+    now = datetime.now()
+
+    # Planificación escalonada (Staggered) para Render Free (límite 512MB RAM):
+    # 1. Cordillera: cada 10m (primer disparo en 1 min)
     scheduler.add_job(
-        lambda: run_command([PYTHON_EXE, "sync_ruteos_movimientos.py", "--apply"], "tracking"),
-        trigger=IntervalTrigger(minutes=15),
-        id="job_tracking",
+        lambda: run_command([PYTHON_EXE, "main.py", "--seguridad-vial"], "cordillera"),
+        trigger=IntervalTrigger(minutes=10),
+        next_run_time=now + timedelta(minutes=1),
+        id="job_cordillera",
         replace_existing=True
     )
 
-    # 2. VACIO: cada 20m
+    # 2. CONF. DE VIAJE: cada 10m (primer disparo en 3 min)
     scheduler.add_job(
-        lambda: run_command([PYTHON_EXE, "sync_vacio.py", "--apply", "--borders"], "vacio"),
-        trigger=IntervalTrigger(minutes=20),
-        id="job_vacio",
+        lambda: run_command([PYTHON_EXE, "main.py", "--conf-viaje"], "conf_viaje"),
+        trigger=IntervalTrigger(minutes=10),
+        next_run_time=now + timedelta(minutes=3),
+        id="job_conf_viaje",
         replace_existing=True
     )
 
-    # 3. Seguimiento Vacío: cada 15m
+    # 3. Seguimiento Vacío: cada 15m (primer disparo en 5 min)
     scheduler.add_job(
         lambda: run_command([PYTHON_EXE, "sync_seguimiento_vacio.py", "--apply"], "seguimiento"),
         trigger=IntervalTrigger(minutes=15),
+        next_run_time=now + timedelta(minutes=5),
         id="job_seguimiento",
         replace_existing=True
     )
 
-    # 4. Disponibilidad: diario 06:00 AM
+    # 4. Tracking: cada 15m (primer disparo en 8 min)
+    scheduler.add_job(
+        lambda: run_command([PYTHON_EXE, "sync_ruteos_movimientos.py", "--apply"], "tracking"),
+        trigger=IntervalTrigger(minutes=15),
+        next_run_time=now + timedelta(minutes=8),
+        id="job_tracking",
+        replace_existing=True
+    )
+
+    # 5. VACIO: cada 20m (primer disparo en 12 min)
+    scheduler.add_job(
+        lambda: run_command([PYTHON_EXE, "sync_vacio.py", "--apply", "--borders"], "vacio"),
+        trigger=IntervalTrigger(minutes=20),
+        next_run_time=now + timedelta(minutes=12),
+        id="job_vacio",
+        replace_existing=True
+    )
+
+    # 6. Disponibilidad: diario 06:00 AM
     scheduler.add_job(
         lambda: run_command(["node", "pintarDisponibilidad.js"], "dispo"),
         trigger=CronTrigger(hour=6, minute=0),
@@ -417,21 +460,5 @@ if HAS_SCHEDULER and os.getenv("ENABLE_SCHEDULER", "true").lower() == "true":
         replace_existing=True
     )
 
-    # 5. Cordillera: cada 10m
-    scheduler.add_job(
-        lambda: run_command([PYTHON_EXE, "main.py", "--seguridad-vial"], "cordillera"),
-        trigger=IntervalTrigger(minutes=10),
-        id="job_cordillera",
-        replace_existing=True
-    )
-
-    # 6. CONF. DE VIAJE: cada 10m
-    scheduler.add_job(
-        lambda: run_command([PYTHON_EXE, "main.py", "--conf-viaje"], "conf_viaje"),
-        trigger=IntervalTrigger(minutes=10),
-        id="job_conf_viaje",
-        replace_existing=True
-    )
-
     scheduler.start()
-    print("[SCHEDULER] ✅ APScheduler iniciado con 6 tareas operativas periódicas.")
+    print("[SCHEDULER] ✅ APScheduler iniciado con 6 tareas operativas escalonadas y serializadas.")
