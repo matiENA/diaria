@@ -33,9 +33,13 @@ import os
 import re
 import sys
 import argparse
+import socket
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
+
+# Prevenir caídas por timeout de 60s en llamadas pesadas a Google Sheets
+socket.setdefaulttimeout(180)
 
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -228,7 +232,7 @@ class SeguimientoVacioSync:
         """Obtiene el sheetId numérico de la pestaña objetivo en Movimientos (con caché)."""
         if self._cached_sheet_id is not None:
             return self._cached_sheet_id
-        meta = self._service.spreadsheets().get(spreadsheetId=self.mov_id).execute()
+        meta = self._service.spreadsheets().get(spreadsheetId=self.mov_id, fields="sheets.properties").execute()
         for sheet in meta.get("sheets", []):
             if sheet["properties"]["title"] == TARGET_TAB_MOV:
                 self._cached_sheet_id = sheet["properties"]["sheetId"]
@@ -251,7 +255,7 @@ class SeguimientoVacioSync:
         res = self._service.spreadsheets().get(
             spreadsheetId=self.mov_id,
             ranges=[range_tractors, range_day],
-            fields="sheets(data(rowData(values(formattedValue,userEnteredFormat.backgroundColor,effectiveFormat.backgroundColor))))"
+            fields="sheets(data(rowData(values(formattedValue,userEnteredFormat.backgroundColor))))"
         ).execute()
 
         sheet_data = res["sheets"][0]["data"]
@@ -287,12 +291,10 @@ class SeguimientoVacioSync:
 
             date_val = ""
             user_bg = None
-            eff_bg = None
             if len(c_vals) > date_offset and c_vals[date_offset]:
                 cell = c_vals[date_offset]
                 date_val = str(cell.get("formattedValue") or "").strip()
                 user_bg = cell.get("userEnteredFormat", {}).get("backgroundColor")
-                eff_bg = cell.get("effectiveFormat", {}).get("backgroundColor")
 
             day_rows.append({
                 "row_num": row_num,
@@ -300,7 +302,7 @@ class SeguimientoVacioSync:
                 "dispo_val": dispo_val,
                 "date_val": date_val,
                 "user_bg": user_bg,
-                "eff_bg": eff_bg
+                "eff_bg": user_bg
             })
 
         return sheet_id, tractor_to_row, day_rows

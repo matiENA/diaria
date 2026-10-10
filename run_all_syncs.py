@@ -89,14 +89,15 @@ def execute_syncs(
     print("=" * 80)
 
     # Definición canónica de módulos
+    day_args = ["--day", day_str] if day is not None else []
     modules_map = {
         "tracking": {
             "title": "1. Tracking Col H (Ruteos ➡️ Movimientos)",
-            "cmd": [PYTHON_EXE, "sync_ruteos_movimientos.py"] + (["--apply"] if apply else []) + ["--day", day_str]
+            "cmd": [PYTHON_EXE, "sync_ruteos_movimientos.py"] + (["--apply"] if apply else []) + day_args
         },
         "vacio": {
             "title": "2. VACÍO Col X con Bordes (Ruteos ➡️ Movimientos)",
-            "cmd": [PYTHON_EXE, "sync_vacio.py"] + (["--apply", "--borders"] if apply else ["--borders"]) + ["--day", day_str]
+            "cmd": [PYTHON_EXE, "sync_vacio.py"] + (["--apply", "--borders"] if apply else ["--borders"]) + day_args
         },
         "seguimiento": {
             "title": "3. Seguimiento Vacío #9fc5e8 (Sin Nuevo TD)",

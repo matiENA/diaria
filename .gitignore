@@ -14,6 +14,7 @@ npm-debug.log*
 # Logs y temporales
 *.log
 last_sync_*.json
+last_poll_*.json
 
 # OS
 .DS_Store

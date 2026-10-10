@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "# 🚀 LIENZO OPERATIVO INTEGRADO: CORDILLERA, MOVIMIENTOS & DISPONIBILIDAD\n**Plataforma centralizada de automatización y sincronización multi-tarea.**\n- **Tarea 1 (Tracking Col H):** Inyecta historial de tracking desde Ruteos hacia notas en hover en Movimientos Mensual (`sync_ruteos_movimientos.py`).\n- **Tarea 2 (VACÍO Col X):** Inyecta reporte de VACÍO al inicio de la nota con doble enmarcado de bordes (`sync_vacio.py`).\n- **Tarea 3 (Seguimiento Vacío):** Pinta en celeste `#9fc5e8` unidades con reporte de VACÍO sin nuevo TD asignado y limpia automáticamente (`sync_seguimiento_vacio.py`).\n- **Tarea 4 (Disponibilidad VTV):** Semáforo de habilitaciones en 33 columnas Dispo protegiendo cabeceras de servicio (`pintarDisponibilidad.js`).\n- **Tarea 5 (Viajes Cordillera):** Filtro geográfico de 21 localidades cordilleranas por TD hacia `SEGURIDA VIAL` (`main.py --seguridad-vial`).\n- **Tarea 6 (CONF. DE VIAJE):** Detección de viajes 'sujeto a seguimiento' en Col W hacia `CONF. DE VIAJE` (`main.py --conf-viaje`).\n- **Tarea 7 (Limpieza VACÍO):** Mantenimiento administrativo y reseteo de VACÍO / bordes ante arreglos de sheets (`limpiar_vacio.py`).\n\n*Las tareas 1-6 cuentan con Disparador Manual Individual, Cron Job y conexión al Orquestador Global Maestro. La Tarea 7 cuenta con Disparador Manual Individual.*",
+        "content": "# 🚀 Central Operativa Integrada: Flotas, Ruteos, Cordillera & Polling Inteligente\n**Pipeline Unificado de Producción** | Módulos 1 al 7 + **Motor de Polling Inteligente (Gatekeeper + Merge)**\nSincronización automatizada entre *Ruteos* y *OCTUBRE 2026- Mov.Unidades y Choferes* con protección de cuota API.",
         "height": 280,
         "width": 1720,
         "color": 6
@@ -41,7 +41,7 @@
       "typeVersion": 1,
       "position": [
         -370,
-        950
+        1340
       ]
     },
     {
@@ -93,7 +93,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_ruteos_movimientos.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 sync_ruteos_movimientos.py --apply\""
       },
       "id": "exec-tracking",
       "name": "Ejecutar Sync Tracking (Col H)",
@@ -130,7 +130,7 @@
       "typeVersion": 1,
       "position": [
         -50,
-        390
+        780
       ]
     },
     {
@@ -141,7 +141,7 @@
       "typeVersion": 1,
       "position": [
         0,
-        440
+        830
       ]
     },
     {
@@ -161,12 +161,13 @@
       "typeVersion": 1.2,
       "position": [
         0,
-        590
-      ]
+        980
+      ],
+      "disabled": true
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_vacio.py --apply --borders\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 sync_vacio.py --apply --borders\""
       },
       "id": "exec-vacio",
       "name": "Ejecutar Sync VACIO (Col X)",
@@ -174,7 +175,7 @@
       "typeVersion": 1,
       "position": [
         380,
-        510
+        900
       ]
     },
     {
@@ -187,7 +188,7 @@
       "typeVersion": 2,
       "position": [
         780,
-        510
+        900
       ]
     },
     {
@@ -203,7 +204,7 @@
       "typeVersion": 1,
       "position": [
         -50,
-        780
+        1170
       ]
     },
     {
@@ -214,7 +215,7 @@
       "typeVersion": 1,
       "position": [
         0,
-        830
+        1220
       ]
     },
     {
@@ -234,12 +235,13 @@
       "typeVersion": 1.2,
       "position": [
         0,
-        980
-      ]
+        1370
+      ],
+      "disabled": true
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_seguimiento_vacio.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 sync_seguimiento_vacio.py --apply\""
       },
       "id": "exec-seguimiento-vacio",
       "name": "Ejecutar Sync Seguimiento Vacío",
@@ -247,7 +249,7 @@
       "typeVersion": 1,
       "position": [
         380,
-        900
+        1290
       ]
     },
     {
@@ -260,7 +262,7 @@
       "typeVersion": 2,
       "position": [
         780,
-        900
+        1290
       ]
     },
     {
@@ -276,7 +278,7 @@
       "typeVersion": 1,
       "position": [
         -50,
-        1170
+        1560
       ]
     },
     {
@@ -287,7 +289,7 @@
       "typeVersion": 1,
       "position": [
         0,
-        1220
+        1610
       ]
     },
     {
@@ -307,7 +309,7 @@
       "typeVersion": 1.2,
       "position": [
         0,
-        1370
+        1760
       ]
     },
     {
@@ -320,7 +322,7 @@
       "typeVersion": 1,
       "position": [
         380,
-        1290
+        1680
       ]
     },
     {
@@ -333,7 +335,7 @@
       "typeVersion": 2,
       "position": [
         780,
-        1290
+        1680
       ]
     },
     {
@@ -349,7 +351,7 @@
       "typeVersion": 1,
       "position": [
         -50,
-        1560
+        1950
       ]
     },
     {
@@ -360,7 +362,7 @@
       "typeVersion": 1,
       "position": [
         0,
-        1610
+        2000
       ]
     },
     {
@@ -380,12 +382,12 @@
       "typeVersion": 1.2,
       "position": [
         0,
-        1760
+        2150
       ]
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 main.py --seguridad-vial\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 main.py --seguridad-vial\""
       },
       "id": "exec-seguridad",
       "name": "Ejecutar Sync Viajes Cordillera",
@@ -393,7 +395,7 @@
       "typeVersion": 1,
       "position": [
         380,
-        1680
+        2070
       ]
     },
     {
@@ -406,7 +408,7 @@
       "typeVersion": 2,
       "position": [
         780,
-        1680
+        2070
       ]
     },
     {
@@ -422,7 +424,7 @@
       "typeVersion": 1,
       "position": [
         -50,
-        1950
+        2340
       ]
     },
     {
@@ -433,7 +435,7 @@
       "typeVersion": 1,
       "position": [
         0,
-        2000
+        2390
       ]
     },
     {
@@ -453,12 +455,12 @@
       "typeVersion": 1.2,
       "position": [
         0,
-        2150
+        2540
       ]
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 main.py --conf-viaje\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 main.py --conf-viaje\""
       },
       "id": "exec-conf-viaje",
       "name": "Ejecutar Sync CONF. DE VIAJE",
@@ -466,7 +468,7 @@
       "typeVersion": 1,
       "position": [
         380,
-        2070
+        2460
       ]
     },
     {
@@ -479,7 +481,7 @@
       "typeVersion": 2,
       "position": [
         780,
-        2070
+        2460
       ]
     },
     {
@@ -495,7 +497,7 @@
       "typeVersion": 1,
       "position": [
         -50,
-        2340
+        2730
       ]
     },
     {
@@ -506,12 +508,12 @@
       "typeVersion": 1,
       "position": [
         0,
-        2460
+        2850
       ]
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 limpiar_vacio.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 limpiar_vacio.py --apply\""
       },
       "id": "exec-limpiar-vacio",
       "name": "Ejecutar Limpieza VACIO",
@@ -519,7 +521,7 @@
       "typeVersion": 1,
       "position": [
         380,
-        2460
+        2850
       ]
     },
     {
@@ -532,7 +534,80 @@
       "typeVersion": 2,
       "position": [
         780,
-        2460
+        2850
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⭐ Motor de Polling Inteligente (Gatekeeper + Merge)\n**Fase 1 (Gatekeeper)**: Chequeo ultraliviano SHA-256 de Columna X y Movimientos en ~3-5s (2 lecturas, 0 escrituras).\n**Fase 2 (Merge)**: Si detecta cambios, ejecuta el merge virtual de TD y Patente, actualizando Tarea 2 (VACÍO con bordes) y Tarea 3 (Seguimiento #9fc5e8) en una sola corrida atómica.",
+        "height": 270,
+        "width": 1150,
+        "color": 6
+      },
+      "id": "sticky-poll-inteligente",
+      "name": "Nota: Polling Inteligente VACÍO & Seguimiento",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -50,
+        390
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "manual-poll-vacio",
+      "name": "Disparador Manual: Polling Inteligente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "cron-poll-vacio",
+      "name": "⏰ Cron: Polling Inteligente (Cada 5m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 poll_sync_vacio.py --apply --borders\""
+      },
+      "id": "exec-poll-vacio",
+      "name": "Ejecutar Polling Inteligente VACIO + Seguimiento",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        380,
+        510
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nconst sinCambios = stdout.includes(\"GATEKEEPER\") || stdout.includes(\"Sin cambios\");\nconst fase2 = stdout.includes(\"FASE 2\");\n\nreturn [{\n  json: {\n    motor: \"Polling Inteligente (Gatekeeper + Merge)\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    modo: sinCambios ? \"FAST-GATE (Sin cambios, omitido)\" : (fase2 ? \"SYNC COMPLETO (Cambio detectado)\" : \"EJECUTADO\"),\n    exitCode,\n    resumen: lines.slice(-5).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code-poll-vacio",
+      "name": "Resumen Polling Inteligente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        510
       ]
     }
   ],
@@ -744,16 +819,6 @@
             "index": 0
           },
           {
-            "node": "Ejecutar Sync VACIO (Col X)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Ejecutar Sync Seguimiento Vacío",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Ejecutar Pintado de Disponibilidad",
             "type": "main",
             "index": 0
@@ -765,6 +830,11 @@
           },
           {
             "node": "Ejecutar Sync CONF. DE VIAJE",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ejecutar Polling Inteligente VACIO + Seguimiento",
             "type": "main",
             "index": 0
           }
@@ -792,9 +862,43 @@
           }
         ]
       ]
+    },
+    "Disparador Manual: Polling Inteligente": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Polling Inteligente VACIO + Seguimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Cron: Polling Inteligente (Cada 5m)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Polling Inteligente VACIO + Seguimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Polling Inteligente VACIO + Seguimiento": {
+      "main": [
+        [
+          {
+            "node": "Resumen Polling Inteligente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1"
-  }
+  },
+  "updatedAt": "2026-10-09T12:40:01.144024"
 }

@@ -61,6 +61,7 @@ EXECUTION_STATE: Dict[str, Any] = {
     "cordillera": {"last_run": None, "status": "idle", "duration": 0, "output": ""},
     "conf_viaje": {"last_run": None, "status": "idle", "duration": 0, "output": ""},
     "limpiar": {"last_run": None, "status": "idle", "duration": 0, "output": ""},
+    "poll_vacio": {"last_run": None, "status": "idle", "duration": 0, "output": ""},
     "all": {"last_run": None, "status": "idle", "duration": 0, "output": ""}
 }
 
@@ -279,6 +280,15 @@ def trigger_vacio(day: Optional[int] = Query(None)):
     if day:
         args += ["--day", str(day)]
     return run_command(args, "vacio")
+
+@app.post("/sync/poll-vacio")
+def trigger_poll_vacio(day: Optional[int] = Query(None), force: bool = Query(False)):
+    args = [PYTHON_EXE, "poll_sync_vacio.py", "--apply", "--borders"]
+    if day:
+        args += ["--day", str(day)]
+    if force:
+        args.append("--force")
+    return run_command(args, "poll_vacio")
 
 @app.post("/sync/seguimiento-vacio")
 def trigger_seguimiento_vacio(day: Optional[int] = Query(None)):
