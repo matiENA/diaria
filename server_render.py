@@ -35,6 +35,8 @@ try:
 except ImportError:
     HAS_SCHEDULER = False
 
+from telegram_notifier import notify_task_result, send_telegram_message
+
 BASE_DIR = Path(__file__).resolve().parent
 PYTHON_EXE = sys.executable
 
@@ -100,6 +102,19 @@ def run_command(cmd: list, key: str) -> Dict[str, Any]:
             "duration": elapsed,
             "output": result["output"][:500]
         }
+
+        # Notificación a Telegram (fallos inmediatos o todas según TELEGRAM_NOTIFY_ALL)
+        try:
+            notify_task_result(
+                task_name=key,
+                success=success,
+                duration=elapsed,
+                error_msg=stderr_txt,
+                output_preview=stdout_txt
+            )
+        except Exception as e_tg:
+            print(f"[TELEGRAM] ⚠️ Error en handler de notificación: {e_tg}")
+
         return result
     except Exception as e:
         elapsed = round((datetime.now() - t0).total_seconds(), 2)
@@ -118,6 +133,18 @@ def run_command(cmd: list, key: str) -> Dict[str, Any]:
             "duration": elapsed,
             "output": str(e)
         }
+
+        try:
+            notify_task_result(
+                task_name=key,
+                success=False,
+                duration=elapsed,
+                error_msg=str(e),
+                output_preview=""
+            )
+        except Exception as e_tg:
+            print(f"[TELEGRAM] ⚠️ Error en handler de notificación: {e_tg}")
+
         return res_err
 
 
@@ -130,6 +157,10 @@ def root_dashboard():
     sched_ok = os.getenv("ENABLE_SCHEDULER", "true").lower() == "true"
     badge_color = "#10b981" if sched_ok else "#f59e0b"
     badge_text = "ACTIVO 24/7" if sched_ok else "MANUAL"
+
+    tg_ok = bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"))
+    tg_color = "#10b981" if tg_ok else "#64748b"
+    tg_text = "🔔 TELEGRAM ACTIVO" if tg_ok else "🔕 TELEGRAM INACTIVO"
     html_content = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -224,7 +255,10 @@ def root_dashboard():
 </head>
 <body>
     <div class="card">
-        <span class="badge">● {badge_text}</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+            <span class="badge" style="background: {badge_color};">● {badge_text}</span>
+            <span class="badge" style="background: {tg_color}; color: #f8fafc;">● {tg_text}</span>
+        </div>
         <h1 style="margin-top: 12px;">Servicio de Operativas Diarias</h1>
         <p>Motor de sincronización y automatización en la nube (Render Cloud) para planillas operativas, tracking, vacíos y disponibilidades.</p>
         
@@ -241,9 +275,10 @@ def root_dashboard():
         </div>
 
         <div class="links">
-            <a href="/docs" class="btn btn-primary">📖 Swagger UI (/docs)</a>
-            <a href="/status" class="btn btn-secondary">📊 Estado (/status)</a>
-            <a href="/health" class="btn btn-secondary">🩺 Salud (/health)</a>
+            <a href="/docs" class="btn btn-primary">📖 Swagger UI</a>
+            <a href="/status" class="btn btn-secondary">📊 Estado</a>
+            <a href="/health" class="btn btn-secondary">🩺 Salud</a>
+            <a href="/test-telegram" class="btn btn-secondary">🔔 Probar Telegram</a>
         </div>
     </div>
 </body>
@@ -257,7 +292,26 @@ def health_check():
         "service": "diaria-operativas",
         "scheduler_enabled": os.getenv("ENABLE_SCHEDULER", "true").lower() == "true",
         "has_scheduler_lib": HAS_SCHEDULER,
+        "telegram_configured": bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID")),
         "time": datetime.now().isoformat()
+    }
+
+@app.api_route("/test-telegram", methods=["GET", "POST"])
+def test_telegram(message: str = Query("🔔 Mensaje de prueba desde Render Cloud")):
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        return {
+            "success": False,
+            "configured": False,
+            "error": "TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no están configurados en las variables de entorno de Render.",
+            "instructions": "Agrega TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID en el panel de Render > Environment."
+        }
+    ok = send_telegram_message(f"🧪 <b>Prueba de Notificación Telegram</b>\n{message}")
+    return {
+        "success": ok,
+        "configured": True,
+        "message": "Mensaje enviado exitosamente a Telegram." if ok else "Error al contactar API de Telegram (asegúrate de haber iniciado el bot con /start)."
     }
 
 @app.get("/status")

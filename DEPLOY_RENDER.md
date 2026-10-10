@@ -50,9 +50,19 @@ En la pestaña **Environment** de tu servicio en Render, agrega las siguientes v
 | `PORT` | `10000` | Puerto interno de escucha |
 | `TZ` | `America/Argentina/Buenos_Aires` | Zona horaria para la ejecución precisa de los Cron |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | `{...}` | **Contenido completo del archivo JSON de tu Service Account** |
+| `TELEGRAM_BOT_TOKEN` *(opcional)* | `123456:ABC...` | Token del bot provisto por `@BotFather` para recibir alertas |
+| `TELEGRAM_CHAT_ID` *(opcional)* | `123456789` | ID de usuario, grupo o canal donde enviar las notificaciones |
+| `TELEGRAM_NOTIFY_ALL` *(opcional)* | `false` | `false` = alerta sólo en fallos; `true` = notifica cada tarea |
 
 ### 💡 ¿Cómo obtener el valor de `GOOGLE_SERVICE_ACCOUNT_JSON`?
 Abre el archivo `credentials.json` o `ute-logistica-key.json` con cualquier editor de texto, copia todo el texto JSON (desde `{` hasta `}`) y pégalo directamente en el campo **Value** en Render.
+
+### 🤖 ¿Cómo configurar las alertas de Telegram?
+1. En Telegram, busca `@BotFather`, escribe `/newbot` y sigue las instrucciones para crear tu bot y obtener tu **Token**.
+2. Escribe `/start` a tu nuevo bot.
+3. Para obtener tu **Chat ID**, busca el bot `@userinfobot` en Telegram y copia el ID numérico que te devuelve.
+4. Pega `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` en el panel de **Environment** en Render.
+5. Puedes probar el envío visitando `https://diaria-operativas.onrender.com/test-telegram`.
 
 ---
 
