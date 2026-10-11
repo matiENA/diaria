@@ -41,6 +41,18 @@ from typing import Dict, List, Optional, Tuple, Any
 # Prevenir caídas por timeout de 60s en llamadas pesadas a Google Sheets
 socket.setdefaulttimeout(180)
 
+# Reconfigurar salida UTF-8 de forma segura para Windows / pyw / n8n
+if hasattr(sys.stdout, "reconfigure") and sys.stdout is not None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure") and sys.stderr is not None:
+    try:
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
@@ -106,7 +118,7 @@ def is_valid_vacio(raw: Any) -> bool:
     if not raw:
         return False
     s = str(raw).strip().upper()
-    if s in ["FALSE", "TRUE", "NO", ""]:
+    if s in ["FALSE", "TRUE", "NO", "#N/A", "TLC", "TPH", ""]:
         return False
     return bool(re.search(r"\d", s) or "VACIO" in s)
 
@@ -300,6 +312,10 @@ class SeguimientoVacioSync:
                 continue
 
             td = str(r[11] if len(r) > 11 else "").strip()
+            # Omitir anotaciones operativas en hold o filas sin TD asignado
+            if not td or not td.isdigit():
+                continue
+
             raw_vacio = str(r[23] if len(r) > 23 else "").strip()
             vacio_ok = is_valid_vacio(raw_vacio)
 
@@ -307,7 +323,7 @@ class SeguimientoVacioSync:
                 tractor_trips[trk] = []
 
             # Si es el mismo TD del viaje actual para esta unidad, actualizamos
-            if tractor_trips[trk] and tractor_trips[trk][-1]["td"] == td and td != "":
+            if tractor_trips[trk] and tractor_trips[trk][-1]["td"] == td:
                 if vacio_ok and not tractor_trips[trk][-1]["has_vacio"]:
                     tractor_trips[trk][-1]["has_vacio"] = True
                     tractor_trips[trk][-1]["vacio_val"] = raw_vacio
@@ -530,7 +546,7 @@ def main():
     )
     args = parser.parse_args()
 
-    if sys.stdout.encoding.lower() != "utf-8":
+    if hasattr(sys.stdout, "reconfigure") and sys.stdout is not None:
         try:
             sys.stdout.reconfigure(encoding="utf-8")
         except Exception:

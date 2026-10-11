@@ -48,7 +48,8 @@ if hasattr(sys.stderr, "reconfigure"):
 
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
-from sync_seguimiento_vacio import get_day_column_indices, index_to_col_letter
+from sync_operativas_unificadas import UnifiedOperativasSync, get_day_column_indices, index_to_col_letter
+from execution_shield import ExecutionShield, ShieldBlockedException, generate_audit_report
 
 BASE_DIR = Path(__file__).resolve().parent
 STATE_FILE = BASE_DIR / "last_poll_state.json"
@@ -110,11 +111,11 @@ class VacioPoller:
             f"'{SOURCE_TAB_RUTEOS}'!X4:X"
         ]
 
-        # 2. Rangos de Movimientos para el día activo (Chofer, Dispo, Date)
-        col_ch, col_disp, col_dt = get_day_column_indices(self.day)
+        # 2. Rangos de Movimientos para el día activo (Chofer, Dispo, Slot 1, Slot 2)
+        col_ch, col_disp, col_s1, col_s2 = get_day_column_indices(self.day)
         let_ch = index_to_col_letter(col_ch)
-        let_dt = index_to_col_letter(col_dt)
-        mov_range = f"'{TARGET_TAB_MOV}'!{let_ch}3:{let_dt}350"
+        let_s2 = index_to_col_letter(col_s2)
+        mov_range = f"'{TARGET_TAB_MOV}'!{let_ch}3:{let_s2}350"
 
         # Consulta combinada a Ruteos (1 sola petición HTTP)
         res_ruteos = self._service.spreadsheets().values().batchGet(
@@ -144,11 +145,11 @@ class VacioPoller:
             if val and val != "#N/A":
                 vacio_items.append({"row": idx + 4, "val": val})
 
-        # Muestra de los últimos 150 TDs en Ruteos para detectar nuevas filas operativas
+        # Muestra de los últimos 150 TDs numéricos en Ruteos para detectar nuevas filas operativas
         td_tail = []
         for idx, row in enumerate(raw_tds[-150:], start=max(4, len(raw_tds) - 146)):
             val = row[0].strip() if row and row[0] else ""
-            if val:
+            if val and val.isdigit():
                 td_tail.append({"row": idx, "td": val})
 
         # Matriz simplificada del día en Movimientos
@@ -191,96 +192,61 @@ class VacioPoller:
         tasks: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
-        Fase 2: Ejecuta los procesos completos de Merge y Sincronización.
+        Fase 2: Ejecuta la sincronización completa en capas (Tracking, VACÍO con bordes y Seguimiento #9fc5e8)
+        en un único recorrido en memoria y 1 batchUpdate consolidado.
         """
-        if tasks is None:
-            tasks = ["vacio", "seguimiento"]
-
         results = {}
         t_start = time.time()
 
         print("\n" + "="*80)
-        print(f"  FASE 2: EJECUTANDO SINCRONIZACIÓN COMPLETA (MERGE TD Y PATENTE)")
+        print(f"  FASE 2: EJECUTANDO SINCRONIZACIÓN EN CAPAS (MOTOR UNIFICADO)")
         print(f"  Modo: {'APLICAR CAMBIOS (--apply)' if apply else 'SIMULACIÓN (dry-run)'}")
-        print(f"  Día objetivo: {self.day}")
-        print(f"  Tareas a ejecutar: {', '.join(tasks)}")
+        print(f"  Día objetivo: {self.day} | Bordes: {borders}")
         print("="*80)
 
-        # 1. Tarea 2: sync_vacio.py
-        if "vacio" in tasks:
-            print("\n[FASE 2.1] 🚀 Ejecutando Tarea 2: Sincronización de VACÍO (Col X) + Notas Hover...")
-            cmd_vacio = [PYTHON_EXE, "sync_vacio.py"]
-            if self.day_explicit:
-                cmd_vacio.extend(["--day", str(self.day)])
+        try:
+            sync_runner = UnifiedOperativasSync(day=self.day)
+            analysis = sync_runner.analyze_trips_and_layers(self.day)
+
+            notes_cnt = len(analysis["notes"])
+            borders_cnt = len(analysis["borders"])
+            paints_cnt = sum(1 for c in analysis["colors"] if c["action"] == "paint")
+            clears_cnt = sum(1 for c in analysis["colors"] if c["action"] == "clear")
+
+            print(f"[FASE 2.1] ✅ Análisis en capas completado:")
+            print(f"           - Notas actualizadas:  {notes_cnt}")
+            print(f"           - Bordes SOLID_MEDIUM: {borders_cnt}")
+            print(f"           - Seguimiento Celeste: +{paints_cnt} pintados / -{clears_cnt} limpiados")
+
             if apply:
-                cmd_vacio.append("--apply")
-            if borders:
-                cmd_vacio.append("--borders")
+                print(f"[FASE 2.2] 🚀 Aplicando batchUpdate consolidado a Google Sheets...")
+                batch_res = sync_runner.apply_atomic_batch(analysis, apply_borders=borders)
+                print(f"           Operaciones aplicadas: {batch_res['updated_count']} en {batch_res['batches']} lotes.")
+                results["batch_res"] = batch_res
+            else:
+                print(f"[FASE 2.2] ℹ️ Modo simulación. Cero escrituras en Google Sheets.")
 
-            p_v = subprocess.run(
-                cmd_vacio,
-                cwd=str(BASE_DIR),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                errors="replace"
+            results["success"] = True
+            results["notes_count"] = notes_cnt
+            results["borders_count"] = borders_cnt
+            results["colors_count"] = len(analysis["colors"])
+
+            # Generar reporte de auditoría en la carpeta reportes/
+            total_elapsed = round(time.time() - t_start, 2)
+            report_file = generate_audit_report(
+                analysis=analysis,
+                batch_result=results.get("batch_res"),
+                apply=apply,
+                mode="Polling Inteligente Unificado",
+                duration_sec=total_elapsed
             )
-            print(p_v.stdout.strip())
-            if p_v.stderr.strip():
-                print(f"[STDERR]\n{p_v.stderr.strip()}")
-            results["vacio"] = {
-                "success": (p_v.returncode == 0),
-                "exit_code": p_v.returncode
-            }
+            results["report_file"] = report_file
+            print(f"\n📄 Reporte de auditoría generado en:\n   -> {report_file}")
 
-        # 2. Tarea 3: sync_seguimiento_vacio.py
-        if "seguimiento" in tasks:
-            print("\n[FASE 2.2] 🚀 Ejecutando Tarea 3: Seguimiento de Vacío (#9fc5e8 / sin nuevo TD)...")
-            cmd_seg = [PYTHON_EXE, "sync_seguimiento_vacio.py", "--day", str(self.day)]
-            if apply:
-                cmd_seg.append("--apply")
-
-            p_s = subprocess.run(
-                cmd_seg,
-                cwd=str(BASE_DIR),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                errors="replace"
-            )
-            print(p_s.stdout.strip())
-            if p_s.stderr.strip():
-                print(f"[STDERR]\n{p_s.stderr.strip()}")
-            results["seguimiento"] = {
-                "success": (p_s.returncode == 0),
-                "exit_code": p_s.returncode
-            }
-
-        # 3. Tarea 1: sync_ruteos_movimientos.py (Opcional si se especifica)
-        if "tracking" in tasks:
-            print("\n[FASE 2.3] 🚀 Ejecutando Tarea 1: Tracking Hover (Col H)...")
-            cmd_trk = [PYTHON_EXE, "sync_ruteos_movimientos.py"]
-            if self.day_explicit:
-                cmd_trk.extend(["--day", str(self.day)])
-            if apply:
-                cmd_trk.append("--apply")
-
-            p_t = subprocess.run(
-                cmd_trk,
-                cwd=str(BASE_DIR),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                errors="replace"
-            )
-            print(p_t.stdout.strip())
-            results["tracking"] = {
-                "success": (p_t.returncode == 0),
-                "exit_code": p_t.returncode
-            }
+        except Exception as e:
+            print(f"[ERROR] Falló la sincronización unificada: {e}")
+            results["success"] = False
+            results["error"] = str(e)
 
         total_elapsed = round(time.time() - t_start, 2)
         results["total_duration_sec"] = total_elapsed
@@ -389,13 +355,22 @@ def main():
         print(f"[*] Modo continuo (--watch) activo. Consultando cada {args.interval} segundos...")
         try:
             while True:
-                execute_single_poll()
+                try:
+                    with ExecutionShield("Polling Inteligente"):
+                        execute_single_poll()
+                except ShieldBlockedException:
+                    pass
                 time.sleep(args.interval)
         except KeyboardInterrupt:
             print("\n[!] Modo continuo finalizado por el usuario.")
             return 0
     else:
-        sys.exit(execute_single_poll())
+        try:
+            with ExecutionShield("Polling Inteligente"):
+                sys.exit(execute_single_poll())
+        except ShieldBlockedException:
+            print("[BLINDAJE] 🛡️ Salida limpia sin colisión.")
+            sys.exit(0)
 
 
 if __name__ == "__main__":

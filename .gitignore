@@ -15,6 +15,7 @@ npm-debug.log*
 *.log
 last_sync_*.json
 last_poll_*.json
+.sync.lock
 
 # OS
 .DS_Store

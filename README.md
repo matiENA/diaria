@@ -3,106 +3,119 @@
 Repositorio centralizado que consolida todas las integraciones, reglas de negocio, sincronizadores y motores de orquestación operativa entre las planillas de **Ruteos** y **Movimientos Mensuales**:
 📁 `C:\Users\Matias Rodriguez\Documents\diaria`
 
-Diseñado para operar de forma híbrida: **100% autónomo en entorno local (Windows)** o en la nube (**Render Cloud**) con soporte para n8n, API REST y CLI.
+Diseñado para operar de forma híbrida: **100% autónomo en entorno local (Windows / n8n Local)** o en la nube (**Render Cloud**) con soporte para API REST y CLI.
 
 ---
 
 ## 📑 Tabla de Contenidos
-1. [Arquitectura y Flujo de Datos](#-arquitectura-y-flujo-de-datos)
-2. [Motor de Polling Inteligente (Gatekeeper + Merge)](#-motor-de-polling-inteligente-gatekeeper--merge)
-3. [Matriz Detallada de Tareas y Procesos (1 a 7)](#-matriz-detallada-de-tareas-y-procesos)
+1. [Arquitectura y Motor Unificado en Capas](#-arquitectura-y-motor-unificado-en-capas)
+2. [Regla Canónica de Columna X y Formatos de Vacío](#-regla-canónica-de-columna-x-y-formatos-de-vacío)
+3. [Motor de Polling Inteligente (Gatekeeper + Capas)](#-motor-de-polling-inteligente-gatekeeper--capas)
 4. [¿Por qué el Merge de TD y Patente es Mandatorio?](#-por-qué-el-merge-de-td-y-patente-es-mandatorio)
 5. [Métricas de Consumo y Cuotas de Google API](#-métricas-de-consumo-y-cuotas-de-google-api)
-6. [Orquestación: n8n, FastAPI (Render) y CLI Local](#-orquestación-n8n-fastapi-y-cli-local)
+6. [Orquestación: n8n Local (localhost:5678) y Render Cloud](#-orquestación-n8n-local-localhost5678-y-render-cloud)
 7. [Guía de Comandos y Scripts .bat](#-guía-de-comandos-y-scripts-bat)
+8. [Modo Silencioso en n8n: py vs pyw](#-modo-silencioso-en-n8n-py-vs-pyw)
 
 ---
 
-## 🌐 Arquitectura y Flujo de Datos
+## 🌐 Arquitectura y Motor Unificado en Capas
+
+El nuevo pipeline consolida las antiguas **Tareas 1, 2 y 3** en un **único recorrido en memoria** (`sync_operativas_unificadas.py`), realizando lecturas dirigidas y un único `batchUpdate` consolidado.
 
 ```mermaid
 flowchart TD
     subgraph Fuentes ["1. Fuentes de Datos (Google Sheets)"]
-        Ruteos["Planilla: Ruteos<br/>- Col L: TD (Viaje)<br/>- Col X: VACÍO (vía IMPORTRANGE)<br/>- Col H: Tracking / Destinos<br/>- Col A/B: Tractor y UT"]
-        Movimientos["Planilla: OCTUBRE 2026- Mov.Unidades y Choferes<br/>- Slots diarios: Viaje 1 y Viaje 2<br/>- Columnas: Chofer, Dispo, Fecha"]
+        Ruteos["Planilla: Ruteos<br/>• Col L: TD (Viaje)<br/>• Col X: Reporte VACÍO (IMPORTRANGE)<br/>• Col H: Tracking / Destinos<br/>• Col A/B: Tractor y UT"]
+        Movimientos["Planilla: OCTUBRE 2026- Mov.Unidades y Choferes<br/>• Slots diarios: Viaje 1 y Viaje 2<br/>• Columnas: Chofer, Dispo, Fecha"]
     end
 
     subgraph Orquestacion ["2. Orquestación y Disparadores"]
-        CronN8N["n8n Local (Workflow kAFFYilewftZIG1H)"]
-        FastAPI["FastAPI en Nube (server_render.py)"]
+        CronN8N["n8n Local (Workflow ProIae9THNBFF8oR)<br/>Cron cada 2 minutos"]
         BatchLocal["Scripts Batch Windows (.bat)"]
+        FastAPI["Render Cloud (Suspendido temporalmente)"]
     end
 
     subgraph PollingEngine ["3. Motor de Polling Inteligente (poll_sync_vacio.py)"]
         Fase1["Fase 1: Gatekeeper Ultraliviano<br/>(batchGet L4:L y X4:X + Checksum SHA-256)"]
         Check{"¿Hubo cambios en Col X,<br/>nuevos TDs o Movimientos?"}
-        Fase2["Fase 2: Motor de Negocio y Merge Virtual<br/>- Merge de filas por (Patente, TD)<br/>- Asignación de Slot 1 o Slot 2<br/>- Evaluación de Último Viaje Activo"]
+        Fase2["Fase 2: Motor Unificado en Capas (sync_operativas_unificadas.py)<br/>• 2 lecturas dirigidas (Ruteos + Movimientos)<br/>• Recorrido atómico en memoria"]
     end
 
-    subgraph Destinos ["4. Aplicación Atómica en Google Sheets"]
-        HoverX["Tarea 2: Inyección de VACÍO al inicio del Hover + Borde Doble"]
-        Celeste["Tarea 3: Pintado #9fc5e8 (Vacío sin nuevo TD) / Cleanup"]
-        Tracking["Tarea 1: Destinos limpios en Hover (Col H)"]
-        Cordillera["Tarea 5 y 6: Sincronización a SEGURIDA VIAL y CONF. DE VIAJE"]
+    subgraph CapasProcesamiento ["4. Procesamiento en Capas (Single Pass)"]
+        Capa1["Capa 1: Destinos Tracking (Col H)<br/>Limpieza de contratos y viñetas"]
+        Capa2["Capa 2: VACÍO Canónico (Col X) + Bordes<br/>• Cabecera 'VACIO d/m hs' al inicio de la nota<br/>• Bordes dobles SOLID_MEDIUM (bottom/left)"]
+        Capa3["Capa 3: Seguimiento Vacío (#9fc5e8)<br/>• Verificación de último viaje sin TD nuevo<br/>• Validación Dispo y color de operador<br/>• Pintado celeste O Cleanup automático"]
     end
 
-    CronN8N --> PollingEngine
-    FastAPI --> PollingEngine
-    BatchLocal --> PollingEngine
+    subgraph Salida ["5. Aplicación Atómica en Google Sheets"]
+        AtomicBatch["1 Único batchUpdate Consolidado<br/>(notes + updateBorders + backgroundColor)"]
+    end
+
+    CronN8N --> Fase1
+    BatchLocal --> Fase1
+    FastAPI -.-> Fase1
 
     Ruteos -.-> Fase1
     Movimientos -.-> Fase1
     Fase1 --> Check
-    Check -- "No (Sin cambios)" --> Fin["Fin en ~3s (0 escrituras, 0 CPU)"]
+    Check -- "No (Sin cambios)" --> Fin["Fin en ~2s (0 escrituras, 0 CPU)"]
     Check -- "Sí (Dato nuevo)" --> Fase2
 
-    Fase2 --> HoverX
-    Fase2 --> Celeste
-    Fase2 --> Tracking
+    Fase2 --> Capa1
+    Capa1 --> Capa2
+    Capa2 --> Capa3
+    Capa3 --> AtomicBatch
 ```
 
 ---
 
-## ⚡ Motor de Polling Inteligente (Gatekeeper + Merge)
+## 📌 Regla Canónica de Columna X y Formatos de Vacío
 
-### El Desafío del `IMPORTRANGE`
-La Columna X de `Ruteos` se nutre mediante una fórmula `=IMPORTRANGE(...)`. En el ecosistema de Google Sheets, ni `onEdit` ni `onChange` se activan cuando una fórmula recalcula datos externos. Un cron tradicional que descargue toda la matriz operativa cada 5 minutos consume recursos masivos (Ruteos supera las **17.800 filas**).
+A partir de la optimización del pipeline, se establecen las siguientes reglas de negocio estrictas:
 
-### La Solución: Arquitectura en 2 Fases (`poll_sync_vacio.py`)
-
-#### Fase 1: Gatekeeper Ultraliviano (Detección en ~3 seg)
-1. **Consulta mínima atómica**: Realiza una sola llamada `spreadsheets.values.batchGet` solicitando exclusivamente:
-   * `Ruteos!L4:L`: Columna de TDs (detecta nuevos viajes cargados).
-   * `Ruteos!X4:X`: Columna de VACÍO (detecta nuevos reportes de vacío o modificaciones de hora).
-   * Columnas del día activo en `Movimientos` (detecta asignaciones manuales de chofer o cambios de disponibilidad).
-2. **Firma criptográfica (Checksum SHA-256)**: Se genera un hash determinista a partir de los datos no vacíos y los últimos registros operativos.
-3. **Comparación contra caché (`last_poll_state.json`)**:
-   * **Si el hash es idéntico**: El proceso aborta inmediatamente en ~3-5 segundos. **Cero escrituras en Google Sheets, cero consumo de memoria pesado.**
-   * **Si el hash difiere**: Se detectó una novedad real y se activa la Fase 2.
-
-#### Fase 2: Ejecución Completa con Merge Virtual
-Se lanzan los sincronizadores oficiales con sus reglas de negocio avanzadas:
-* `sync_vacio.py --apply --borders` (Tarea 2)
-* `sync_seguimiento_vacio.py --apply` (Tarea 3)
-* Tras completar la sincronización, se persiste la nueva huella digital en `last_poll_state.json`.
+1. **VACÍO 100% Dependiente de Columna X**:
+   * El encabezado `VACIO ...`, la aplicación de **bordes dobles** (`SOLID_MEDIUM`) y la condición previa para el pintado celeste `#9fc5e8` dependen **exclusivamente de la Columna X** de Ruteos.
+   * La **Columna H** es considerada **tracking puro**: sus textos y anotaciones operativas (incluso si contienen `/14HS VACIO` u horarios) se insertan intactos en el **cuerpo de la nota** debajo del encabezado, sin ascender a cabecera ni disparar por sí mismos bordes o colores.
+2. **Inclusión de Formatos de Fecha (Sin descartes)**:
+   * Anteriormente, se descartaban fechas sin hora o con medianoche (`0:00`), lo que provocaba que en la sección **CAMPO** no se reconocieran los vacíos.
+   * **Formatos soportados y su salida canónica**:
+     * `08/10/2026` o `08/10` ➡️ `VACIO 8/10 hs`
+     * `08/10/2026 0:00` ➡️ `VACIO 8/10 hs`
+     * `04/10/2026 8:10:00` ➡️ `VACIO 4/10 8:10 hs`
+     * `05/10/26 23 HS` ➡️ `VACIO 5/10 23:00 hs`
+     * `07/10 23:40` ➡️ `VACIO 7/10 23:40 hs`
+     * `VACIO` ➡️ `VACIO`
+   * **Valores descartados (falsos vacíos)**: `FALSE`, `TRUE`, `#N/A`, `TLC`, `TPH`, `NO`, `""`.
+3. **Estructura Final de la Nota Hover**:
+   ```
+   VACIO 8/10 hs                                   <-- Capa 2 (Col X)
+   • 31349 - RIO NEUQUEN COMBUSTIBLES S.A.        <-- Capa 1 (Destinos Col H)
+   15:30 00029 /14:10 Arroyito                    <-- Capa 1 (Tránsito Col H)
+   ```
 
 ---
 
-## 🔍 ¿Por qué el Merge de TD y Patente es Mandatorio?
+## ⚡ Motor de Polling Inteligente (Gatekeeper + Capas)
 
-Cuando se detecta un dato nuevo en la Columna X, **no basta con leer esa celda de forma aislada**. El cruce relacional entre TD y Patente es obligatorio por tres motivos estructurales:
+### Fase 1: Gatekeeper Ultraliviano (~2 seg)
+1. **Consulta mínima atómica**: Realiza una llamada `batchGet` solicitando exclusivamente `Ruteos!L4:L` (TDs), `Ruteos!X4:X` (Vacíos) y las columnas del día en `Movimientos`.
+2. **Checksum SHA-256**: Genera una firma criptográfica y la compara con [`last_poll_state.json`](./last_poll_state.json).
+3. **Abrupt Exit**: Si el hash no cambió, aborta en **~2 segundos con 0 escrituras y 0 consumo pesado**.
 
-1. **Paradas múltiples por remito (Un TD en varias filas)**:
-   * En `Ruteos`, un tractor realizando un viaje con TD `1281428` suele tener 2 o 3 filas consecutivas si realiza entregas en distintas localidades.
-   * El reporte de VACÍO en la Columna X se carga habitualmente en una sola fila (la última parada).
-   * El algoritmo agrupa virtualmente todas las filas que comparten `(Patente, TD)` para consolidar el horario de vacío con todas las localidades recorridas.
-
-2. **Regla de "Vacío sin nuevo TD" (Tarea 3 - Pintado `#9fc5e8`)**:
-   * Para saber si una unidad debe pintarse de celeste o limpiarse, el sistema debe conocer si el viaje con reporte de vacío es el **último viaje cronológico** del camión.
-   * Si para esa misma patente ya se registró un **nuevo TD posterior** en Ruteos (aunque todavía no tenga vacío), el camión ya fue asignado a otro servicio: **no debe pintarse** o debe ejecutarse el **cleanup automático** para quitar el color.
-
-3. **Asignación de Slot en la Planilla Mensual (Viaje 1 vs Viaje 2)**:
-   * Cada día en `OCTUBRE 2026- Mov.Unidades y Choferes` dispone de 2 slots de columnas. El merge por TD determina con precisión matemática si el vacío corresponde al Slot 1 o al Slot 2 evitando sobreescribir datos de otros viajes.
+### Fase 2: Ejecución Unificada en Memoria (`sync_operativas_unificadas.py`)
+Si el Gatekeeper detecta novedades (o se pasa `--force`):
+1. Carga `Ruteos!A4:AL` (1 sola llamada GET).
+2. Carga en una sola consulta combinada los Tractores (`E1:E350`), UTs (`C1:C350`) y las columnas del día en `Movimientos`.
+3. Evalúa en el mismo ciclo las 3 capas:
+   * **Capa 1 (Tracking)**: Normalización y deduplicación de destinos.
+   * **Capa 2 (VACÍO y Bordes)**: Composición de cabecera y órdenes `updateBorders`.
+   * **Capa 3 (Seguimiento Celestes #9fc5e8)**:
+     * Evalúa si el TD con vacío es el **último viaje cronológico** del tractor (sin TD nuevo posterior).
+     * Evalúa que la columna `Dispo` no pertenezca a las localidades excluidas: `dock sud`, `tds`, `tlc`, `tlp`, `tvm`, `tlc-cm`, `tlc-ute`, `pp`.
+     * Evalúa que la celda no tenga texto ni color manual aplicado por un operador.
+     * Si califica, programa el pintado `#9fc5e8`. Si ya no califica (recibió un nuevo TD o cambió Dispo), ejecuta el **cleanup automático** removiendo el color.
+4. Ejecuta **1 solo `batchUpdate` consolidado** a Google Sheets.
 
 ---
 
@@ -110,137 +123,127 @@ Cuando se detecta un dato nuevo en la Columna X, **no basta con leer esa celda d
 
 | # | Tarea / Módulo | Script Principal | Frecuencia / Modo | Objetivo y Mecanismo en Google Sheets |
 |---|---|---|---|---|
-| **1** | **Tracking Hover (Col H)** | `sync_ruteos_movimientos.py` | Cron 15m / Polling | Lee destinos limpios de Col H en Ruteos y los inserta como **notas en hover** en las celdas de fecha de Movimientos sin pisar información existente. |
-| **2** | **VACÍO con Bordes (Col X)** | `sync_vacio.py` | Polling Inteligente / Cron 20m | Formatea la fecha de vacío (`VACIO d/m h:mm hs`) y la inyecta al **inicio de la nota en hover** (conservando el tracking). Aplica **borde inferior doble (`SOLID_MEDIUM`)** para identificación visual inmediata. |
-| **3** | **Seguimiento Vacío (#9fc5e8)** | `sync_seguimiento_vacio.py` | Polling Inteligente / Cron 15m | Pinta de celeste (`#9fc5e8`) la celda del día si la unidad reportó vacío y no tiene TD posterior. Excluye localidades no operativas (Dock Sud, TDS, TLC, TLP, TVM, PP) y respeta colores manuales de operadores. Incluye **cleanup automático**. |
-| **4** | **Disponibilidad VTV** | `pintarDisponibilidad.js` | Diario 06:00 AM | Evalúa vencimientos de VTV/Ruta de tractores y semirremolques, coloreando el semáforo diario de 33 columnas en Movimientos. |
-| **5** | **Viajes Cordillera** | `main.py --seguridad-vial` | Cron 10m | Filtra viajes con destinos en las 21 localidades cordilleranas reglamentadas e inserta los registros en la pestaña `SEGURIDA VIAL`. |
-| **6** | **CONF. DE VIAJE** | `main.py --conf-viaje` | Cron 10m | Monitorea la Columna W ('sujeto a seguimiento') en Ruteos y vuelca los despachos activos a la hoja `CONF. DE VIAJE`. |
-| **7** | **Limpieza VACÍO (Reset)** | `limpiar_vacio.py` | Manual / Exclusivo | Script de mantenimiento que remueve notas de VACÍO y bordes dobles restaurando el estado original ante errores operativos. |
+| **1-3** | **Motor Unificado en Capas** | `sync_operativas_unificadas.py` | Polling **cada 2 min** | Consolida Tracking (Col H), VACÍO con bordes (Col X) y Seguimiento celeste (#9fc5e8) en un único recorrido y 1 batchUpdate. |
+| **1** | **Tracking Hover (Col H)** | `sync_ruteos_movimientos.py` | Standalone / CLI | Módulo individual de lectura de destinos Col H e inyección de hover notes. |
+| **2** | **VACÍO con Bordes (Col X)** | `sync_vacio.py` | Standalone / CLI | Módulo individual de formateo de vacío y bordes dobles `SOLID_MEDIUM`. |
+| **3** | **Seguimiento Vacío (#9fc5e8)** | `sync_seguimiento_vacio.py` | Standalone / CLI | Módulo individual de evaluación de último TD, exclusiones Dispo y pintado celeste. |
+| **4** | **Disponibilidad VTV** | `pintarDisponibilidad.js` | Cron diario **06:00 AM** | Evalúa vencimientos de VTV/Ruta de tractores y semirremolques en 33 columnas de `Dispo.`. |
+| **5** | **Viajes Cordillera** | `main.py --seguridad-vial` | Cron **cada 10 min** | Filtra viajes con destinos cordilleranos e inserta los 22 campos en la pestaña `SEGURIDA VIAL`. |
+| **6** | **CONF. DE VIAJE** | `main.py --conf-viaje` | Cron **cada 10 min** | Monitorea despachos 'sujeto a seguimiento' y los vuelca en `CONF. DE VIAJE`. |
+| **7** | **Limpieza VACÍO (Reset)** | `limpiar_vacio.py` | Manual / Exclusivo | Herramienta administrativa para revertir notas de vacío y bordes ante correcciones. |
 
 ---
 
 ## 📊 Métricas de Consumo y Cuotas de Google API
 
-### Límites de Google Sheets API v4 (Google Cloud Project)
-* **Lectura**: 300 peticiones por minuto por proyecto (60 req/min por usuario).
-* **Escritura**: 300 peticiones por minuto por proyecto (60 req/min por usuario).
-
-### Comparativa de Consumo Diario: Cron Tradicional vs Polling Inteligente
+### Comparativa: Flujo Anterior Separado vs Motor Unificado en Capas
 
 ```
-Consumo Diario de Peticiones Google API (Lectura):
-Cron 5m Continuo:        [████████████████████████████████████████] ~2.880 peticiones / día
-Polling Inteligente:     [██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] ~400 - 600 peticiones / día  (-80%)
-
-Tiempo de CPU / Servidor Diario:
-Cron 5m Continuo:        [████████████████████████████████████████] ~216 minutos de procesamiento
-Polling Inteligente:     [████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] ~18 minutos de procesamiento  (-91%)
+┌─────────────────────────────────┬───────────────────────────┬───────────────────────────┬──────────────┐
+│ Métrica                         │ Flujo Previo (Separado)   │ Flujo Unificado en Capas  │ Reducción    │
+├─────────────────────────────────┼───────────────────────────┼───────────────────────────┼──────────────┤
+│ Llamadas GET a Ruteos (18k rows)│ 3 llamadas por corrida    │ 1 llamada por corrida     │ -67%         │
+│ Llamadas GET a Movimientos      │ 3 llamadas (inc. A1:ZZ350)│ 1 llamada dirigida        │ -67%         │
+│ Celdas transferidas (Payload)   │ ~350.000 celdas           │ ~25.000 celdas            │ -93% tráfico │
+│ Llamadas batchUpdate (Escritura)│ 3 llamadas concurrentes   │ 1 llamada atómica única   │ -66%         │
+│ Subprocesos del SO lanzados     │ 3 procesos python.exe     │ 0 (mismo runtime nativo)  │ -100% fork   │
+│ Tiempo total de ejecución       │ ~35 - 45 segundos         │ ~3 - 5 segundos           │ -85% tiempo  │
+│ Intervalo seguro en producción  │ 15 a 20 minutos           │ 2 a 3 minutos             │ Alta frescura│
+└─────────────────────────────────┴───────────────────────────┴───────────────────────────┴──────────────┘
 ```
-
-* **Horas no operativas (Noche / Fines de Semana)**:
-  * Cron tradicional: Sigue ejecutando 288 lecturas pesadas y gastando cuota.
-  * Polling Inteligente: El Gatekeeper resuelve en ~3s con 1 sola lectura liviana y **0 escrituras**.
-* **Protección contra Error 429 (`Resource Exhausted`)**: Al centralizar Tarea 2 y Tarea 3 bajo el mismo poller, se eliminan las colisiones de concurrencia donde dos scripts intentan escribir en Movimientos al mismo segundo.
 
 ---
 
-## 🛠️ Orquestación: n8n, FastAPI y CLI Local
+## 🛠️ Orquestación: n8n Local (localhost:5678) y Render Cloud
 
-### 1. n8n Local (`http://localhost:5678/workflow/kAFFYilewftZIG1H`)
-* Workflow: `Operativas Integradas - Cordillera, Movimientos & Disponibilidad (Cloud & Local)`.
-* En lugar de dos nodos separados ejecutando `sync_vacio.py` y `sync_seguimiento_vacio.py` cada 5m en simultáneo, se puede ejecutar el comando unificado:
+### 1. n8n Local (`http://localhost:5678`)
+* **Workflow Activo**: `Operativas Integradas - Cordillera, Movimientos & Disponibilidad (Cloud & Local)` (ID: `ProIae9THNBFF8oR`).
+* **Cron Unificado**: Nodo `⏰ Cron: Polling Unificado en Capas (Cada 2m)` configurado cada **2 minutos**.
+* **Comando Ejecutado**:
   ```bash
-  cmd /c "cd /d C:\Users\Matias Rodriguez\Documents\diaria && py -3.13 poll_sync_vacio.py --apply --borders"
+  cmd /c "cd /d C:\Users\Matias Rodriguez\Documents\diaria && pyw -3.13 poll_sync_vacio.py --apply --borders"
   ```
+* Los crons individuales redundantes de Tracking, Vacío y Seguimiento están desactivados (`disabled: True`) para evitar duplicación de escrituras, manteniendo sus disparadores manuales accesibles para testing.
 
-### 2. FastAPI en Render Cloud (`server_render.py`)
-Expone endpoints REST para activar tareas bajo demanda o integrarlas a webhooks externos:
-* `POST /sync/poll-vacio`: Ejecuta el Polling Inteligente con Gatekeeper. Parámetros opcionales: `?day=N&force=true`.
-* `POST /sync/vacio`: Dispara Tarea 2 directa.
-* `POST /sync/seguimiento-vacio`: Dispara Tarea 3 directa.
-* `POST /sync/tracking`: Dispara Tarea 1 directa.
-* `POST /sync/all`: Corre el pipeline completo.
-* `GET /status` y `GET /health`: Monitoreo del estado y duración de la última corrida de cada tarea.
+### 2. Estado de Render Cloud (`server_render.py`)
+* **Suspensión Temporal**: Los disparos automáticos desde la nube han sido suspendidos para concentrar la calibración y auditoría en el entorno local.
+* **Compatibilidad Futura**: Se agregó el endpoint `POST /sync/unified` para permitir disparos remotos o reactivar el scheduler de APScheduler cuando se decida relanzar el servicio en la nube.
 
 ---
 
 ## 💻 Guía de Comandos y Scripts .bat
 
-### Ejecución con Archivos Batch (.bat)
-* **`run_poll_vacio.bat`**: Ejecuta el Polling Inteligente de Vacío y Seguimiento con aplicación de cambios y bordes.
-* **`run_all_syncs.bat`**: Disparador maestro de todas las tareas (1 a 6).
-* **`run_sync_vacio.bat`**: Corre Tarea 2 directa.
-* **`run_sync_seguimiento_vacio.bat`**: Corre Tarea 3 directa.
-* **`run_sync_tracking.bat`**: Corre Tarea 1 directa.
-* **`run_limpiar_vacio.bat`**: Ejecuta la herramienta de reseteo / limpieza de notas de vacío.
+### Scripts Batch (.bat)
+* **`run_poll_vacio.bat`**: Ejecuta el Polling Inteligente con Gatekeeper y motor unificado en capas con `--apply --borders`.
+* **`run_all_syncs.bat`**: Corre la suite operativa completa (Motor Unificado + Disponibilidad + Cordillera + Conf. de Viaje).
+* **`run_sync_vacio.bat`**: Corre Tarea 2 aislada.
+* **`run_sync_seguimiento_vacio.bat`**: Corre Tarea 3 aislada.
+* **`run_sync_tracking.bat`**: Corre Tarea 1 aislada.
+* **`run_limpiar_vacio.bat`**: Herramienta administrativa de reseteo.
 
-### Ejecución por Línea de Comandos (CLI)
+### Comandos de Terminal (CLI)
 
 ```bash
-# 1. Polling Inteligente (Modo Simulación / Dry-run)
-py -3.13 poll_sync_vacio.py
+# 1. Simulación Dry-Run del Motor Unificado para un día específico
+py -3.13 sync_operativas_unificadas.py --day 7 --limit 25
 
-# 2. Polling Inteligente aplicando cambios reales con bordes dobles
+# 2. Aplicar cambios reales en Google Sheets con bordes dobles
+py -3.13 sync_operativas_unificadas.py --day 7 --apply --borders
+
+# 3. Polling Inteligente con Gatekeeper (detección en ~2s)
 py -3.13 poll_sync_vacio.py --apply --borders
 
-# 3. Forzar ejecución completa ignorando el estado previo
-py -3.13 poll_sync_vacio.py --apply --force
+# 4. Forzar sincronización completa ignorando el hash previo
+py -3.13 poll_sync_vacio.py --apply --borders --force
 
-# 4. Modo Observador Continuo (Daemon cada 60 segundos)
-py -3.13 poll_sync_vacio.py --apply --borders --watch --interval 60
-
-# 5. Filtrar por un día específico del mes (ej. Día 9)
-py -3.13 poll_sync_vacio.py --apply --day 9
+# 5. Ejecutar la suite completa de pruebas unitarias
+py -3.13 test_vacio_fechas.py
 ```
 
 ---
 
-## 🔇 Modo Silencioso en n8n: Diferencia entre `py` y `pyw` & Procedimiento de Rollback
-
-### 1. ¿En qué se diferencian `py.exe` y `pyw.exe`?
-
-Ambos son binarios oficiales distribuidos por Python Software Foundation ubicados en `C:\Windows\`:
+## 🔇 Modo Silencioso en n8n: `py` vs `pyw`
 
 | Característica | `py -3.13` (Estándar) | `pyw -3.13` (Windowless / Silencioso) |
 | :--- | :--- | :--- |
 | **Subsistema PE de Windows** | `IMAGE_SUBSYSTEM_WINDOWS_CUI` (Console UI) | `IMAGE_SUBSYSTEM_WINDOWS_GUI` (Windowless) |
-| **Comportamiento Visual** | Windows **asigna y abre una ventana negra de CMD** cada vez que se dispara. | Windows **no abre ninguna ventana**. Corre 100% invisible en segundo plano. |
-| **Entorno de Python** | Python 3.13 idéntico, mismos módulos instalados. | Python 3.13 idéntico, mismos módulos instalados. |
-| **Captura de Logs en n8n** | Redirige `stdout`/`stderr` a los pipes de Node.js. | Redirige `stdout`/`stderr` a los pipes de Node.js exactamente igual. |
-| **Uso Ideal** | Terminal interactiva de desarrollo y depuración manual. | Tareas programadas en segundo plano (Cron, n8n, servicios). |
-
-> **Nota sobre los logs:** Usar `pyw` **NO pierde ningún registro**. La salida de texto (`stdout`), los errores (`stderr`) y los códigos de salida (`exitCode`) siguen siendo leídos y procesados en su totalidad por n8n en cada nodo de `Execute Command` y en los nodos `Resumen`.
+| **Comportamiento Visual** | Windows abre una ventana negra de CMD emergente. | Windows **no abre ninguna ventana**. Corre 100% invisible. |
+| **Captura de Logs** | `stdout`/`stderr` leídos por n8n. | `stdout`/`stderr` leídos por n8n idénticamente. |
+| **Uso Ideal** | Terminal interactiva y depuración CLI. | Automatizaciones en segundo plano (n8n, cron). |
 
 ---
 
-### 2. ¿Cómo inspeccionar logs sin abrir consolas?
-* **Desde n8n**: En la vista de ejecuciones (`http://localhost:5678/workflow/.../executions/...`), haz clic sobre el nodo `Ejecutar Polling Inteligente` o `Resumen Polling Inteligente` para ver el JSON con el log completo.
-* **Desde archivos locales**:
-  * [`last_poll_state.json`](./last_poll_state.json): Estado de la última verificación del Gatekeeper.
-  * [`last_sync_result.json`](./last_sync_result.json): Detalle de filas copiadas, errores y tiempos.
-  * [`reportes/REPORTE_POLLING_INTELIGENTE.md`](../reportes/REPORTE_POLLING_INTELIGENTE.md): Reporte de auditoría en vivo.
+## 🛡️ Blindaje de Concurrencia y Exclusión Mutua (`execution_shield.py`)
+
+Para evitar que el **Polling Inteligente** (que se dispara cada 2 minutos en n8n) y otras ejecuciones periódicas o manuales (como `run_all_syncs.py` o scripts batch) colisionen, se implementó un mecanismo de blindaje nativo a nivel del sistema operativo Windows:
+
+1. **Archivo de Bloqueo Atómico (`.sync.lock`)**:
+   * Registra el PID del proceso en curso, timestamp de inicio y nombre de la tarea.
+2. **Detección Activa de Procesos (Win32 Kernel API)**:
+   * Consulta `kernel32.OpenProcess(0x101000, False, pid)` para determinar si el proceso dueño del lock sigue realmente en ejecución.
+   * Si el proceso terminó o se cerró forzosamente, el bloqueo huérfano (*stale lock*) se libera de forma automática.
+3. **Salida Limpia y Silenciosa (`ShieldBlockedException`)**:
+   * Si otro proceso intenta ejecutar una sincronización mientras hay una en curso, aborta inmediatamente con código de salida `0` y el mensaje:
+     ```
+     [BLINDAJE] 🔒 Proceso en curso detectado: 'Polling Inteligente' (PID 1234, hace 5s).
+     [BLINDAJE] 🛡️ Omitiendo ejecución actual para evitar superposición concurrente.
+     [BLINDAJE] 🛡️ Salida limpia sin colisión.
+     ```
+   * Esto previene saturación de cuotas de la API de Google, contención de archivos y fallos en cascada en n8n.
 
 ---
 
-### 3. Procedimiento de Rollback (Volver a ver ventanas de CMD)
+## 📑 Reportes de Auditoría en Tiempo Real (`reportes/`)
 
-Si en algún momento deseas depurar y ver visualmente la ventana negra emergiendo en pantalla con sus `print()` en vivo:
+Cada vez que el motor unificado evalúa o aplica cambios en Google Sheets, se autogenera un informe detallado en formato Markdown y un registro histórico en JSONL:
 
-#### Opción A: Rollback manual en n8n
-En el lienzo de n8n, abre cualquier nodo de `Execute Command` y cambia `pyw` por `py`:
-* **Modo silencioso actual:**
-  ```bash
-  cmd /c "cd /d C:\Users\Matias Rodriguez\Documents\diaria && pyw -3.13 poll_sync_vacio.py --apply --borders"
-  ```
-* **Rollback visible:**
-  ```bash
-  cmd /c "cd /d C:\Users\Matias Rodriguez\Documents\diaria && py -3.13 poll_sync_vacio.py --apply --borders"
-  ```
-
-#### Opción B: Ejecución directa por Batch (.bat)
-Los archivos batch interactivos (`run_poll_vacio.bat`, `run_all_syncs.bat`) utilizan `py -3.13` para que puedas correrlos con doble clic y ver la consola abierta con los logs completos en cualquier momento.
+* **Ruta del Último Reporte:** [`diaria/reportes/ULTIMO_REPORTE_POLLING.md`](./reportes/ULTIMO_REPORTE_POLLING.md)
+* **Histórico Cronológico:** Copias con timestamp `reportes/reporte_YYYYMMDD_HHMMSS.md` y línea de métricas en [`reportes/historial_auditoria.jsonl`](./reportes/historial_auditoria.jsonl).
+* **Contenido del Reporte**:
+  * Resumen de métricas: total de notas actualizadas, bordes dobles aplicados, celdas pintadas celeste y limpiezas realizadas.
+  * Coordenadas exactas en la hoja (ej. celda `DE222`, fila 222, tractor `AI336HJ CAMPO`).
+  * Vista previa del texto de las notas hover para inspeccionar las capas antes o después de la escritura en Google Sheets.
 
 ---
+
 *Central Operativa Diaria © 2026 — Arquitectura de Sincronización y Automatización Logística.*
-

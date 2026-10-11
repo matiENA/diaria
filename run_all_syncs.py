@@ -44,6 +44,8 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
+from execution_shield import ExecutionShield, ShieldBlockedException
+
 BASE_DIR = Path(__file__).resolve().parent
 PYTHON_EXE = sys.executable
 
@@ -91,6 +93,10 @@ def execute_syncs(
     # Definición canónica de módulos
     day_args = ["--day", day_str] if day is not None else []
     modules_map = {
+        "unified": {
+            "title": "1-3. Motor Unificado en Capas (Tracking + VACÍO + Seguimiento)",
+            "cmd": [PYTHON_EXE, "sync_operativas_unificadas.py"] + (["--apply", "--borders"] if apply else ["--borders"]) + day_args
+        },
         "tracking": {
             "title": "1. Tracking Col H (Ruteos ➡️ Movimientos)",
             "cmd": [PYTHON_EXE, "sync_ruteos_movimientos.py"] + (["--apply"] if apply else []) + day_args
@@ -166,30 +172,35 @@ def main():
     parser = argparse.ArgumentParser(description="Orquestador unificado de sincronizaciones diarias")
     parser.add_argument("--apply", action="store_true", help="Escribe los cambios reales en Google Sheets")
     parser.add_argument("--day", type=int, default=None, help="Día del mes a procesar (por defecto: día de hoy)")
-    parser.add_argument("--module", type=str, default="all", choices=["all", "tracking", "vacio", "seguimiento", "dispo", "cordillera", "conf_viaje", "limpiar"])
+    parser.add_argument("--module", type=str, default="all", choices=["all", "unified", "tracking", "vacio", "seguimiento", "dispo", "cordillera", "conf_viaje", "limpiar"])
     parser.add_argument("--daemon", action="store_true", help="Bucle continuo en segundo plano")
     parser.add_argument("--interval", type=int, default=600, help="Intervalo en segundos en modo daemon (def: 600s)")
 
     args = parser.parse_args()
 
-    # Módulos estándar que componen la rutina diaria ('all' excluye limpiar por seguridad)
+    # Módulos estándar que componen la rutina diaria ('all' ejecuta el motor unificado + disponibilidad + cordillera)
     if args.module == "all":
-        selected_modules = ["tracking", "vacio", "seguimiento", "dispo", "cordillera", "conf_viaje"]
+        selected_modules = ["unified", "dispo", "cordillera", "conf_viaje"]
     else:
         selected_modules = [args.module]
 
-    if args.daemon:
-        print(f"[DAEMON] Iniciando modo daemon cada {args.interval} segundos...")
-        while True:
-            try:
-                execute_syncs(selected_modules, apply=args.apply, day=args.day)
-            except Exception as e:
-                print(f"[DAEMON ERROR] {e}")
-            time.sleep(args.interval)
-    else:
-        report = execute_syncs(selected_modules, apply=args.apply, day=args.day)
-        if not report["all_success"]:
-            sys.exit(1)
+    try:
+        with ExecutionShield("Orquestador Maestro run_all_syncs"):
+            if args.daemon:
+                print(f"[DAEMON] Iniciando modo daemon cada {args.interval} segundos...")
+                while True:
+                    try:
+                        execute_syncs(selected_modules, apply=args.apply, day=args.day)
+                    except Exception as e:
+                        print(f"[DAEMON ERROR] {e}")
+                    time.sleep(args.interval)
+            else:
+                report = execute_syncs(selected_modules, apply=args.apply, day=args.day)
+                if not report["all_success"]:
+                    sys.exit(1)
+    except ShieldBlockedException:
+        print("[BLINDAJE] 🛡️ Salida limpia sin colisión.")
+        sys.exit(0)
 
 
 if __name__ == "__main__":

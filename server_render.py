@@ -66,6 +66,7 @@ EXECUTION_STATE: Dict[str, Any] = {
     "conf_viaje": {"last_run": None, "status": "idle", "duration": 0, "output": ""},
     "limpiar": {"last_run": None, "status": "idle", "duration": 0, "output": ""},
     "poll_vacio": {"last_run": None, "status": "idle", "duration": 0, "output": ""},
+    "unified": {"last_run": None, "status": "idle", "duration": 0, "output": ""},
     "all": {"last_run": None, "status": "idle", "duration": 0, "output": ""}
 }
 
@@ -356,6 +357,13 @@ def trigger_poll_vacio(day: Optional[int] = Query(None), force: bool = Query(Fal
     if force:
         args.append("--force")
     return run_command(args, "poll_vacio")
+
+@app.post("/sync/unified")
+def trigger_unified(day: Optional[int] = Query(None)):
+    args = [PYTHON_EXE, "sync_operativas_unificadas.py", "--apply", "--borders"]
+    if day:
+        args += ["--day", str(day)]
+    return run_command(args, "unified")
 
 @app.post("/sync/seguimiento-vacio")
 def trigger_seguimiento_vacio(day: Optional[int] = Query(None)):

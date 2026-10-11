@@ -26,6 +26,18 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 
+# Reconfigurar salida UTF-8 de forma segura para Windows / pyw / n8n
+if hasattr(sys.stdout, "reconfigure") and sys.stdout is not None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure") and sys.stderr is not None:
+    try:
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
@@ -88,35 +100,42 @@ def format_vacio_datetime(raw: str) -> str:
       '01-10-202612:20'     -> 'VACIO 1/10 12:20 hs'
       '5/10/26 23 HS'       -> 'VACIO 5/10 23:00 hs'
       '7/10 23:40'          -> 'VACIO 7/10 23:40 hs'
+      '08/10/2026'          -> 'VACIO 8/10 hs'
+      '09/10/2026 0:00'     -> 'VACIO 9/10 hs'
       'VACIO'               -> 'VACIO'
-    Casos descartados (falsos vacíos / sin hora / seriales de fecha):
-      '07/10/2026'          -> ''
-      '08/10/2026 0:00'     -> ''
-      'FALSE', 'TRUE', '#N/A', 'TLC', 'TPH' -> ''
+    Casos descartados (falsos vacíos):
+      'FALSE', 'TRUE', '#N/A', 'TLC', 'TPH', 'NO', ''
     """
     if not raw:
         return ""
     s = str(raw).strip().replace("*", "")
-    if s.upper() in ["TRUE", "FALSE", "#N/A", "TLC", "TPH", ""]:
+    if s.upper() in ["TRUE", "FALSE", "#N/A", "TLC", "TPH", "NO", ""]:
         return ""
 
     if s.strip().upper() == "VACIO":
         return "VACIO"
 
-    # 1. Patrón con hora y minutos separados por ':'
-    # Previene capturar el año como hora (ej. '07/10/2026' no tiene ':')
+    # Serial numérico Excel (ej. 46295 = 2026-10-01)
+    if s.isdigit():
+        try:
+            serial = int(s)
+            dt = datetime(1899, 12, 30) + timedelta(days=serial)
+            if 1 <= dt.month <= 12 and 1 <= dt.day <= 31:
+                return f"VACIO {dt.day}/{dt.month} hs"
+        except Exception:
+            pass
+
+    # 1. Patrón con hora y minutos separados por ':' (ej: 04/10/2026 8:10:00 o 08/10/2026 0:00)
     m = re.search(r"(\d{1,2})[/-](\d{1,2})[/-](?:20326|32026|20\d{2}|\d{4}|\d{2})\s*(\d{1,2}):(\d{2})(?::\d{2})?", s)
     if m:
         d = int(m.group(1))
         mo = int(m.group(2))
         h = int(m.group(3))
         mi = int(m.group(4))
-        # Descartar horas inválidas o medianoche 0:00 (artefacto de formatos solo fecha)
-        if h >= 24 or mi >= 60 or (h == 0 and mi == 0):
-            return ""
-        if mo < 1 or mo > 12 or d < 1 or d > 31:
-            return ""
-        return f"VACIO {d}/{mo} {h}:{mi:02d} hs"
+        if 1 <= mo <= 12 and 1 <= d <= 31 and h < 24 and mi < 60:
+            if h == 0 and mi == 0:
+                return f"VACIO {d}/{mo} hs"
+            return f"VACIO {d}/{mo} {h}:{mi:02d} hs"
 
     # 2. Patrón con 'HS' explícito (ej. '5/10/26 23 HS')
     m2 = re.search(r"(\d{1,2})[/-](\d{1,2})[/-](?:20326|32026|20\d{2}|\d{4}|\d{2})\s*(\d{1,2})\s*HS\b", s, re.IGNORECASE)
@@ -124,22 +143,36 @@ def format_vacio_datetime(raw: str) -> str:
         d = int(m2.group(1))
         mo = int(m2.group(2))
         h = int(m2.group(3))
-        if h >= 24 or h == 0 or mo < 1 or mo > 12 or d < 1 or d > 31:
-            return ""
-        return f"VACIO {d}/{mo} {h}:00 hs"
+        if 1 <= mo <= 12 and 1 <= d <= 31 and 1 <= h < 24:
+            return f"VACIO {d}/{mo} {h}:00 hs"
 
-    # 3. Patrón fecha corta sin año (ej. '7/10 23:40')
+    # 3. Patrón fecha corta sin año con hora (ej. '7/10 23:40')
     m3 = re.search(r"(\d{1,2})[/-](\d{1,2})\s+(\d{1,2}):(\d{2})", s)
     if m3:
         d = int(m3.group(1))
         mo = int(m3.group(2))
         h = int(m3.group(3))
         mi = int(m3.group(4))
-        if h >= 24 or mi >= 60 or (h == 0 and mi == 0):
-            return ""
-        if mo < 1 or mo > 12 or d < 1 or d > 31:
-            return ""
-        return f"VACIO {d}/{mo} {h}:{mi:02d} hs"
+        if 1 <= mo <= 12 and 1 <= d <= 31 and h < 24 and mi < 60:
+            if h == 0 and mi == 0:
+                return f"VACIO {d}/{mo} hs"
+            return f"VACIO {d}/{mo} {h}:{mi:02d} hs"
+
+    # 4. Patrón fecha completa sin hora (ej. '08/10/2026', '09/10/2026', '8/10/26')
+    m4 = re.search(r"(\d{1,2})[/-](\d{1,2})[/-](?:20326|32026|20\d{2}|\d{4}|\d{2})", s)
+    if m4:
+        d = int(m4.group(1))
+        mo = int(m4.group(2))
+        if 1 <= mo <= 12 and 1 <= d <= 31:
+            return f"VACIO {d}/{mo} hs"
+
+    # 5. Patrón fecha corta sin año (ej. '8/10')
+    m5 = re.search(r"^(\d{1,2})[/-](\d{1,2})$", s)
+    if m5:
+        d = int(m5.group(1))
+        mo = int(m5.group(2))
+        if 1 <= mo <= 12 and 1 <= d <= 31:
+            return f"VACIO {d}/{mo} hs"
 
     return ""
 
@@ -502,7 +535,7 @@ def main():
     )
     args = parser.parse_args()
 
-    if sys.stdout.encoding.lower() != "utf-8":
+    if hasattr(sys.stdout, "reconfigure") and sys.stdout is not None:
         try:
             sys.stdout.reconfigure(encoding="utf-8")
         except Exception:
