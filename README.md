@@ -16,6 +16,7 @@ Diseñado para operar de forma híbrida: **100% autónomo en entorno local (Wind
 6. [Orquestación: n8n Local (localhost:5678) y Render Cloud](#-orquestación-n8n-local-localhost5678-y-render-cloud)
 7. [Guía de Comandos y Scripts .bat](#-guía-de-comandos-y-scripts-bat)
 8. [Modo Silencioso en n8n: py vs pyw](#-modo-silencioso-en-n8n-py-vs-pyw)
+9. [Gestión y Rotación Mensual de Planillas (cambiar_mes.py)](#-gestión-y-rotación-mensual-de-planillas-cambiar_mespy)
 
 ---
 
@@ -243,6 +244,40 @@ Cada vez que el motor unificado evalúa o aplica cambios en Google Sheets, se au
   * Resumen de métricas: total de notas actualizadas, bordes dobles aplicados, celdas pintadas celeste y limpiezas realizadas.
   * Coordenadas exactas en la hoja (ej. celda `DE222`, fila 222, tractor `AI336HJ CAMPO`).
   * Vista previa del texto de las notas hover para inspeccionar las capas antes o después de la escritura en Google Sheets.
+
+---
+
+## 🔄 Gestión y Rotación Mensual de Planillas (`cambiar_mes.py`)
+
+Para cambiar los IDs y nombres de pestañas de las planillas mensuales sin tener que modificar el código fuente, se dispone del módulo centralizado [`config_operativas.json`](./config_operativas.json) y la herramienta CLI [`cambiar_mes.py`](./cambiar_mes.py).
+
+### Comandos de Rotación Mensual (CLI)
+
+```bash
+# 1. Consultar el estado actual de las planillas configuradas y la caché
+py -3.13 cambiar_mes.py --status
+
+# 2. Asistente interactivo guiado paso a paso por consola
+py -3.13 cambiar_mes.py --interactivo
+
+# 3. Rotación directa en un solo comando
+py -3.13 cambiar_mes.py \
+    --nombre "NOVIEMBRE 2026" \
+    --ruteos-id "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o" \
+    --tab-ruteos "Ruteos" \
+    --mov-id "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc" \
+    --tab-mov "NOVIEMBRE 2026- Mov.Unidades y Choferes" \
+    --dias-transicion 7
+
+# 4. Purgar manualmente la caché local congelada del mes anterior
+py -3.13 cambiar_mes.py --limpiar-cache
+```
+
+### Comportamiento Automático de Rotación
+1. **Archivo histórico:** El `mes_actual` anterior se desplaza automáticamente a `mes_anterior`.
+2. **Purgado de caché:** Se elimina `cache_ruteos_mes_anterior.json` para que el nuevo mes anterior se capture limpiamente.
+3. **Transición dual:** Durante los primeros `dias_transicion` (por defecto 7 días), el sistema lee en vivo tanto la planilla del mes anterior como la del mes actual. A partir del día 8, la planilla anterior se congela en caché local con 0 consumo de cuota API.
+4. **Render Cloud:** Los IDs también pueden sobreescribirse mediante las variables de entorno `RUTEOS_ID`, `MOVIMIENTOS_ID`, `TAB_MOVIMIENTOS`, etc.
 
 ---
 

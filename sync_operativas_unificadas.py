@@ -313,7 +313,7 @@ def compose_final_note(vacio_header: str, tracking_body: str) -> str:
     clean_tracking = "\n".join(lines).strip()
 
     if vacio_header and clean_tracking:
-        return f"{vacio_header}\n{clean_tracking}"
+        return f"{vacio_header}\n\n{clean_tracking}"
     return vacio_header or clean_tracking or ""
 
 
@@ -631,11 +631,11 @@ class UnifiedOperativasSync:
             td = str(r[11] if len(r) > 11 else "").strip()
             raw_vacio = str(r[23] if len(r) > 23 else "").strip()
             fecha_val = str(r[36] if len(r) > 36 else "").strip()
-            localidad = str(r[37] if len(r) > 37 else "").strip()
 
             if not (trk or ut) or not (td and td.isdigit()):
                 continue
-            if not (localidad or tracking_val or raw_vacio):
+            # Opción A: Solo tracking puro de Col H y/o Vacío de Col X (omite Col AL / Col AD)
+            if not (tracking_val or raw_vacio):
                 continue
 
             trip_day = parse_day_from_cell(fecha_val, expected_month=self.target_month)
@@ -657,14 +657,10 @@ class UnifiedOperativasSync:
             if td_key not in trips_for_day[unit_key]["tds"]:
                 trips_for_day[unit_key]["tds"][td_key] = {
                     "vacio_header": "",
-                    "localidades": [],
                     "tracking_extra": []
                 }
 
             td_entry = trips_for_day[unit_key]["tds"][td_key]
-
-            if localidad and localidad not in td_entry["localidades"]:
-                td_entry["localidades"].append(localidad)
 
             if tracking_val and tracking_val not in td_entry["tracking_extra"]:
                 td_entry["tracking_extra"].append(tracking_val)
@@ -708,8 +704,8 @@ class UnifiedOperativasSync:
                     target_cell = cell_s2
                     target_slot = 2
 
-                # Capa 1: Tracking
-                track_body = format_tracking_text(td_data["localidades"], td_data["tracking_extra"])
+                # Capa 1: Tracking (Opción A: puro de Col H)
+                track_body = format_tracking_text([], td_data["tracking_extra"])
                 # Capa 2: VACÍO (si existe en Col X)
                 vacio_head = td_data["vacio_header"]
                 final_note = compose_final_note(vacio_head, track_body)
@@ -745,7 +741,8 @@ class UnifiedOperativasSync:
                     target_col_let = let_s1 if slot_idx == 0 else let_s2
                     target_cell = cell_s1 if slot_idx == 0 else cell_s2
 
-                    track_body = format_tracking_text(td_data["localidades"], td_data["tracking_extra"])
+                    # Capa 1: Tracking (Opción A: puro de Col H)
+                    track_body = format_tracking_text([], td_data["tracking_extra"])
                     vacio_head = td_data["vacio_header"]
                     final_note = compose_final_note(vacio_head, track_body)
 

@@ -37,11 +37,15 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
 
-DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
-DEFAULT_MOV_ID = "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc"
+from config_operativas import load_config
+from sync_operativas_unificadas import format_vacio_datetime
 
-SOURCE_TAB_RUTEOS = "Ruteos"
-TARGET_TAB_MOV = "OCTUBRE 2026- Mov.Unidades y Choferes"
+_cfg = load_config()
+DEFAULT_RUTEOS_ID = _cfg["mes_actual"]["ruteos_id"]
+DEFAULT_MOV_ID = _cfg["mes_actual"]["movimientos_id"]
+
+SOURCE_TAB_RUTEOS = _cfg["mes_actual"]["tab_ruteos"]
+TARGET_TAB_MOV = _cfg["mes_actual"]["tab_movimientos"]
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -84,63 +88,21 @@ def parse_day_from_cell(fecha_val: str) -> Optional[int]:
     return None
 
 
-def format_vacio_datetime(raw: str) -> str:
-    """Valida y formatea datos de VACÍO canónicos. Descarta fechas sin hora y 0:00 medianoche."""
-    if not raw:
-        return ""
-    s = str(raw).strip().replace("*", "")
-    if s.upper() in ["TRUE", "FALSE", "#N/A", "TLC", "TPH", ""]:
-        return ""
-
-    if s.strip().upper() == "VACIO":
-        return "VACIO"
-
-    # 1. Patrón fecha y hora con ':'
-    m = re.search(r"(\d{1,2})[/-](\d{1,2})[/-](?:20326|32026|20\d{2}|\d{4}|\d{2})\s*(\d{1,2}):(\d{2})(?::\d{2})?", s)
-    if m:
-        d = int(m.group(1))
-        mo = int(m.group(2))
-        h = int(m.group(3))
-        mi = int(m.group(4))
-        if h >= 24 or mi >= 60 or (h == 0 and mi == 0):
-            return ""
-        if mo < 1 or mo > 12 or d < 1 or d > 31:
-            return ""
-        return f"VACIO {d}/{mo} {h}:{mi:02d} hs"
-
-    # 2. Patrón con 'HS' explícito
-    m2 = re.search(r"(\d{1,2})[/-](\d{1,2})[/-](?:20326|32026|20\d{2}|\d{4}|\d{2})\s*(\d{1,2})\s*HS\b", s, re.IGNORECASE)
-    if m2:
-        d = int(m2.group(1))
-        mo = int(m2.group(2))
-        h = int(m2.group(3))
-        if h >= 24 or h == 0 or mo < 1 or mo > 12 or d < 1 or d > 31:
-            return ""
-        return f"VACIO {d}/{mo} {h}:00 hs"
-
-    # 3. Patrón fecha corta sin año
-    m3 = re.search(r"(\d{1,2})[/-](\d{1,2})\s+(\d{1,2}):(\d{2})", s)
-    if m3:
-        d = int(m3.group(1))
-        mo = int(m3.group(2))
-        h = int(m3.group(3))
-        mi = int(m3.group(4))
-        if h >= 24 or mi >= 60 or (h == 0 and mi == 0):
-            return ""
-        if mo < 1 or mo > 12 or d < 1 or d > 31:
-            return ""
-        return f"VACIO {d}/{mo} {h}:{mi:02d} hs"
-
-    return ""
-
-
 def strip_vacio_header(note: str) -> str:
-    """Elimina la línea inicial de VACÍO conservando el tracking de Columna H intacto."""
+    """Elimina la cabecera de VACÍO conservando el tracking de Columna H intacto."""
     if not note:
         return ""
-    lines = note.split("\n")
-    while lines and lines[0].strip().upper().startswith("VACIO"):
+    lines = [l for l in note.split("\n") if l.strip()]
+    if lines and lines[0].strip().upper().startswith("VACIO"):
         lines = lines[1:]
+    return "\n".join(lines).strip()
+
+
+def strip_bullets(note: str) -> str:
+    """Elimina líneas que comienzan con viñetas '•' (localidades/destinos obsoletos), conservando el resto."""
+    if not note:
+        return ""
+    lines = [l for l in note.split("\n") if not l.strip().startswith("•")]
     return "\n".join(lines).strip()
 
 
@@ -238,12 +200,14 @@ class VacioCleaner:
     def plan_cleanup(
         self,
         reset_all: bool = False,
+        clean_bullets: bool = False,
         filter_day: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Determina las celdas a limpiar.
         - Si reset_all=True: limpia todos los VACÍO y bordes en los días seleccionados.
         - Si reset_all=False (Smart): limpia solo celdas con VACÍO anómalo o sin respaldo canónico.
+        - Si clean_bullets=True: elimina viñetas obsoletas '•' de localidades/destinos.
         """
         canonical_vacios = self.fetch_canonical_ruteos_vacios() if not reset_all else set()
         _, mov_rows = self.fetch_movimientos_data()
@@ -283,37 +247,45 @@ class VacioCleaner:
                 borders = cell["borders"]
                 first_line = note.split("\n")[0].strip() if note else ""
                 has_vacio_note = first_line.upper().startswith("VACIO")
+                has_bullets = any(l.strip().startswith("•") for l in note.split("\n")) if note else False
 
                 # Detectar bordes SOLID_MEDIUM
                 b_bottom = borders.get("bottom", {}).get("style") == "SOLID_MEDIUM"
                 b_left = borders.get("left", {}).get("style") == "SOLID_MEDIUM"
                 has_vacio_borders = b_bottom or b_left
 
-                if not (has_vacio_note or has_vacio_borders):
+                if not (has_vacio_note or has_vacio_borders or (clean_bullets and has_bullets)):
                     continue
 
-                should_clean = False
-                reason = ""
+                should_clean_vacio = False
+                reason_parts = []
 
                 if reset_all:
-                    should_clean = True
-                    reason = "Reseteo total solicitado (--all)"
+                    should_clean_vacio = True
+                    reason_parts.append("Reseteo total solicitado (--all)")
                 else:
                     # Smart cleanup:
-                    # 1. Header claramente anómalo (0:00 hs, 26:00 hs, o VACIO pelado)
-                    if has_vacio_note and ("0:00 hs" in first_line or "26:00 hs" in first_line or first_line == "VACIO"):
-                        should_clean = True
-                        reason = f"Header anómalo detectado: '{first_line}'"
+                    # 1. Header claramente anómalo (0:00 hs, 26:00 hs)
+                    if has_vacio_note and ("0:00 hs" in first_line or "26:00 hs" in first_line):
+                        should_clean_vacio = True
+                        reason_parts.append(f"Header anómalo detectado: '{first_line}'")
                     # 2. Verificar contra Ruteos canónico
-                    elif (trk, d) not in canonical_vacios and (ut, d) not in canonical_vacios:
-                        should_clean = True
-                        reason = f"Sin respaldo canónico en Ruteos para UT {ut}/Trk {trk} en Día {d}"
+                    elif has_vacio_note or has_vacio_borders:
+                        if (trk, d) not in canonical_vacios and (ut, d) not in canonical_vacios:
+                            should_clean_vacio = True
+                            reason_parts.append(f"Sin respaldo canónico en Ruteos para UT {ut}/Trk {trk} en Día {d}")
 
-                if should_clean:
-                    cleaned_note = strip_vacio_header(note) if has_vacio_note else note
-                    needs_note_update = (has_vacio_note and cleaned_note != note)
-                    needs_border_reset = has_vacio_borders
+                cleaned_note = note
+                if should_clean_vacio and has_vacio_note:
+                    cleaned_note = strip_vacio_header(cleaned_note)
+                if clean_bullets and has_bullets:
+                    cleaned_note = strip_bullets(cleaned_note)
+                    reason_parts.append("Limpieza de viñetas obsoletas (•)")
 
+                needs_note_update = (cleaned_note != note)
+                needs_border_reset = has_vacio_borders and should_clean_vacio
+
+                if needs_note_update or needs_border_reset:
                     planned.append({
                         "row": row_num,
                         "col_idx": c_idx,
@@ -328,7 +300,7 @@ class VacioCleaner:
                         "new_note": cleaned_note,
                         "needs_note_update": needs_note_update,
                         "needs_border_reset": needs_border_reset,
-                        "reason": reason
+                        "reason": " | ".join(reason_parts)
                     })
 
         return planned
@@ -426,6 +398,11 @@ def main():
         help="Limpia TODOS los encabezados de VACÍO y bordes en toda la grilla mensual (conservando el tracking Col H)."
     )
     parser.add_argument(
+        "--clean-bullets",
+        action="store_true",
+        help="Elimina viñetas '•' de localidades/destinos obsoletos en las notas, conservando el tracking puro de Col H."
+    )
+    parser.add_argument(
         "--day",
         type=int,
         default=None,
@@ -449,6 +426,8 @@ def main():
     print("  LIMPIADOR / RESETEADOR DE VACIO Y BORDES: MOVIMIENTOS")
     print(f"  Modo Operación: {'APLICAR EN GOOGLE SHEETS' if args.apply else 'SIMULACIÓN (DRY-RUN)'}")
     print(f"  Estrategia:     {'RESETEO TOTAL (--all)' if args.reset_all else 'LIMPIEZA INTELIGENTE (Falsos Vacíos / Sin Respaldo)'}")
+    if args.clean_bullets:
+        print("  Filtro Extra:   Limpieza de viñetas obsoletas ('•') activada")
     if args.day:
         print(f"  Filtro por día: {args.day} de octubre")
     print("=" * 80)
@@ -460,7 +439,7 @@ def main():
         print(f"      - Planilla Ruteos ID:     {cleaner.ruteos_id}")
 
     print("\n[2/3] Analizando celdas operativas en Movimientos...")
-    planned = cleaner.plan_cleanup(reset_all=args.reset_all, filter_day=args.day)
+    planned = cleaner.plan_cleanup(reset_all=args.reset_all, clean_bullets=args.clean_bullets, filter_day=args.day)
     print(f"      - Total celdas detectadas para limpieza: {len(planned)}")
 
     if not planned:

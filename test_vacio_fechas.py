@@ -49,14 +49,57 @@ class TestVacioFechasYCapas(unittest.TestCase):
     def test_compose_final_note_layering(self):
         """
         Verifica que VACÍO vaya en la primera línea si existe en Col X,
-        y que Col H permanezca debajo como tracking puro.
+        seguido de una línea en blanco de separación, y debajo el tracking de Col H.
         """
         vacio_header = "VACIO 9/10 hs"
         tracking_body = "31349 - RIO NEUQUEN COMBUSTIBLES S.A.\n/14HS VACIO /8HS CAMINO AÑELO"
 
         res = compose_final_note(vacio_header, tracking_body)
-        expected = "VACIO 9/10 hs\n31349 - RIO NEUQUEN COMBUSTIBLES S.A.\n/14HS VACIO /8HS CAMINO AÑELO"
+        expected = "VACIO 9/10 hs\n\n31349 - RIO NEUQUEN COMBUSTIBLES S.A.\n/14HS VACIO /8HS CAMINO AÑELO"
         self.assertEqual(res, expected)
+
+    def test_opcion_a_pure_col_h_without_bullets(self):
+        """
+        Verifica que bajo Opción A, no se generen viñetas (•) ni localidades de Col AL.
+        La nota debe ser únicamente el tracking de Col H.
+        """
+        tracking_extra = ["13:03 llegando a El Parch e /12:07 Unzue /10:55 dero /10:03 Paso Guamini"]
+        res = format_tracking_text([], tracking_extra)
+        self.assertEqual(res, "13:03 llegando a El Parch e /12:07 Unzue /10:55 dero /10:03 Paso Guamini")
+        self.assertNotIn("•", res)
+        self.assertNotIn("NEUQUEN", res)
+        self.assertNotIn("CATRIEL", res)
+
+    def test_row_70_day_13_note_composition(self):
+        """
+        Simula el caso exacto reportado por el usuario (Row 70, Día 13):
+        No debe contener bullets de localidades (• NEUQUEN, • CATRIEL), solo el tracking puro de Col H.
+        """
+        vacio_head = ""
+        track_extra = ["13:03 llegando a El Parch e /12:07 Unzue /10:55 dero /10:03 Paso Guamini"]
+        track_body = format_tracking_text([], track_extra)
+        final_note = compose_final_note(vacio_head, track_body)
+
+        self.assertEqual(final_note, "13:03 llegando a El Parch e /12:07 Unzue /10:55 dero /10:03 Paso Guamini")
+        self.assertNotIn("• NEUQUEN", final_note)
+        self.assertNotIn("• CATRIEL", final_note)
+
+    def test_vacio_with_blank_line_separation(self):
+        """
+        Verifica que cuando coexisten VACÍO y tracking de Col H:
+        - Fila 0: 'VACIO ...'
+        - Fila 1: '' (línea vacía para distinguir claramente)
+        - Fila 2+: párrafo de tracking de Col H
+        """
+        vacio_head = "VACIO 13/10 14:00 hs"
+        track_body = "13:03 llegando a El Parch e /12:07 Unzue /10:55 dero"
+        final_note = compose_final_note(vacio_head, track_body)
+
+        lines = final_note.split("\n")
+        self.assertEqual(len(lines), 3)
+        self.assertEqual(lines[0], "VACIO 13/10 14:00 hs")
+        self.assertEqual(lines[1], "")  # Espacio en blanco de separación
+        self.assertEqual(lines[2], "13:03 llegando a El Parch e /12:07 Unzue /10:55 dero")
 
     def test_compose_final_note_without_col_x(self):
         """
@@ -197,6 +240,25 @@ class TestVacioFechasYCapas(unittest.TestCase):
         self.assertEqual(last_trip["td"], "1298875")
         self.assertTrue(last_trip["has_vacio"])
         self.assertEqual(last_trip["vacio_header"], "VACIO 11/10 12:06 hs")
+
+    def test_limpiar_vacio_strip_helpers(self):
+        """Verifica que strip_vacio_header y strip_bullets limpien adecuadamente respetando Col H."""
+        from limpiar_vacio import strip_vacio_header, strip_bullets
+
+        # Caso con separación de doble línea \n\n
+        note_with_blank = "VACIO 13/10 14:00 hs\n\n13:03 llegando a El Parch e /12:07 Unzue"
+        self.assertEqual(strip_vacio_header(note_with_blank), "13:03 llegando a El Parch e /12:07 Unzue")
+
+        # Caso con bullets de localidades obsoletas
+        note_with_bullets = "• NEUQUEN\n• CATRIEL\n13:03 llegando a El Parch e /12:07 Unzue"
+        self.assertEqual(strip_bullets(note_with_bullets), "13:03 llegando a El Parch e /12:07 Unzue")
+
+        # Caso combinado con VACIO y bullets
+        combo = "VACIO 13/10 hs\n\n• NEUQUEN\n13:03 llegando"
+        no_vacio = strip_vacio_header(combo)
+        self.assertEqual(no_vacio, "• NEUQUEN\n13:03 llegando")
+        no_bullets = strip_bullets(no_vacio)
+        self.assertEqual(no_bullets, "13:03 llegando")
 
 
 if __name__ == "__main__":

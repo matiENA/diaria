@@ -9,3 +9,6 @@
 {"timestamp": "2026-10-13T09:41:44.130571", "day": 13, "mode": "Polling Inteligente Unificado", "apply": true, "duration_sec": 124.15, "notes_count": 45, "borders_count": 0, "paint_count": 17, "clear_count": 0, "applied_ops": 62}
 {"timestamp": "2026-10-13T11:14:46.786037", "day": 13, "mode": "Sincronización Unificada en Capas", "apply": false, "duration_sec": 70.19, "notes_count": 51, "borders_count": 0, "paint_count": 27, "clear_count": 0, "applied_ops": 0}
 {"timestamp": "2026-10-13T11:17:55.839217", "day": 13, "mode": "Polling Inteligente Unificado", "apply": true, "duration_sec": 121.67, "notes_count": 51, "borders_count": 0, "paint_count": 27, "clear_count": 0, "applied_ops": 78}
+{"timestamp": "2026-10-13T11:25:55.723440", "day": 13, "mode": "Polling Inteligente Unificado", "apply": true, "duration_sec": 177.0, "notes_count": 0, "borders_count": 0, "paint_count": 1, "clear_count": 0, "applied_ops": 1}
+{"timestamp": "2026-10-13T11:33:25.177925", "day": 13, "mode": "Polling Inteligente Unificado", "apply": true, "duration_sec": 56.93, "notes_count": 0, "borders_count": 0, "paint_count": 0, "clear_count": 0, "applied_ops": 0}
+{"timestamp": "2026-10-13T14:32:04.021923", "day": 13, "mode": "Sincronización Unificada en Capas", "apply": false, "duration_sec": 124.25, "notes_count": 50, "borders_count": 0, "paint_count": 0, "clear_count": 0, "applied_ops": 0}

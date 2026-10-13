@@ -1,11 +1,11 @@
 # 📊 Reporte de Auditoría: Sincronización Operativa Diaria
 
-- **Fecha y Hora:** `2026-10-13 11:17:55`
+- **Fecha y Hora:** `2026-10-13 14:32:04`
 - **Día Operativo Procesado:** `Día 13 de Octubre`
-- **Modo de Ejecución:** **✅ APLICADO REAL EN GOOGLE SHEETS**
-- **Motor:** `Polling Inteligente Unificado`
-- **Duración Total:** `121.67 segundos`
-- **Operaciones en Google Sheets:** `78 operaciones en 1 lote(s)`
+- **Modo de Ejecución:** **ℹ️ SIMULACIÓN (DRY-RUN - Sin escrituras)**
+- **Motor:** `Sincronización Unificada en Capas`
+- **Duración Total:** `124.25 segundos`
+- **Operaciones en Google Sheets:** `0 operaciones en 0 lote(s)`
 
 ---
 
@@ -13,10 +13,10 @@
 
 | Métrica | Cantidad Detectada | Estado en Sheets |
 | :--- | :--- | :--- |
-| **Notas Hover Actualizadas (Capa 1 & 2)** | `51` | Aplicadas |
-| **Bordes Dobles de VACÍO (SOLID_MEDIUM)** | `0` | Aplicados |
-| **Celdas Pintadas Celeste (#9fc5e8)** | `+27` | Coloreadas |
-| **Celdas Limpiadas (Cleanup automático)** | `-0` | Restauradas |
+| **Notas Hover Actualizadas (Capa 1 & 2)** | `50` | Simuladas |
+| **Bordes Dobles de VACÍO (SOLID_MEDIUM)** | `0` | Simulados |
+| **Celdas Pintadas Celeste (#9fc5e8)** | `+0` | Simuladas |
+| **Celdas Limpiadas (Cleanup automático)** | `-0` | Simuladas |
 
 ---
 
@@ -30,12 +30,12 @@
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`GE140`** | 140 | Slot 1 | `AG580QD` | 338 | `1301041` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE27`** | 27 | Slot 1 | `AD217WS` | 56 | `1301102` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
-| **`GE10`** | 10 | Slot 1 | `AG426OA` | 20 | `1301151` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE13`** | 13 | Slot 1 | `AG426OD` | 26 | `1301151` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE58`** | 58 | Slot 1 | `AG870VE` | 240 | `1301143` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE59`** | 59 | Slot 1 | `AD355XA` | 242 | `1301098` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE295`** | 295 | Slot 1 | `AF101XN` | 278 | `1301136` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
-| **`GE102`** | 102 | Slot 1 | `AF858FE` | 298 | `1301077` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
+| **`GE108`** | 108 | Slot 1 | `AG147LU` | 304 | `1301077` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
+| **`GE102`** | 102 | Slot 1 | `AF858FE` | 298 | `1301126` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE122`** | 122 | Slot 1 | `AG341QX` | 318 | `1301097` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GG122`** | 122 | Slot 2 | `AG341QX` | 318 | `1301120` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE28`** | 28 | Slot 1 | `AG225MC` | 57 | `1301128` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
@@ -47,9 +47,8 @@
 | **`GE126`** | 126 | Slot 1 | `AG426OC` | 324 | `1301141` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE130`** | 130 | Slot 1 | `AG466AO` | 328 | `1301099` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE204`** | 204 | Slot 1 | `AH630JW` | 482 | `1301139` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
-| **`GE33`** | 33 | Slot 1 | `AG538QX` | 70 | `1300450` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
+| **`GE33`** | 33 | Slot 1 | `AG538QX` | 70 | `1301547` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE38`** | 38 | Slot 1 | `AG426OT` | 200 | `1300588` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
-| **`GE39`** | 39 | Slot 1 | `` | 201 | `1300550` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE51`** | 51 | Slot 1 | `AG629YJ` | 227 | `1300574` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE57`** | 57 | Slot 1 | `AG037RR` | 239 | `1300619` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE81`** | 81 | Slot 1 | `AF071WY` | 266 | `1301341` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
@@ -80,83 +79,37 @@
 | **`GE217`** | 217 | Slot 1 | `AI181FF` | 497 | `1300011` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 | **`GE36`** | 36 | Slot 1 | `AG274ZR` | 75 | `1300450` | `*(Sin vacío / Solo Tracking)*` | ❌ No |
 
-### 🎨 Seguimiento de Vacío: Pintados y Cleanups (Capa 3)
-
-| Celda | Fila | Tractor | Acción | Último TD | Reporte Vacío | Columna Dispo | Motivo |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`GE16`** | 16 | `AG629YU` | **🎨 PINTAR #9fc5e8** | `1296587` | `VACIO 10/10 17:40 hs` | `Disponible` | Vacío sin TD posterior (Dispo válida) |
-| **`GE265`** | 265 | `AG580QE` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `Disponible` | Vacío sin TD posterior (Dispo válida) |
-| **`GE55`** | 55 | `AF438MG` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `en viaje CM` | Vacío sin TD posterior (Dispo válida) |
-| **`GE95`** | 95 | `AF510IY` | **🎨 PINTAR #9fc5e8** | `1299864` | `VACIO 13/10 9:30 hs` | `en viaje UTE` | Vacío sin TD posterior (Dispo válida) |
-| **`GE97`** | 97 | `AF438MH` | **🎨 PINTAR #9fc5e8** | `1290085` | `VACIO 9/10 17:31 hs` | `Disponible` | Vacío sin TD posterior (Dispo válida) |
-| **`GE112`** | 112 | `AG225MO` | **🎨 PINTAR #9fc5e8** | `1290915` | `VACIO 10/10 9:30 hs` | `en viaje EURO` | Vacío sin TD posterior (Dispo válida) |
-| **`GE232`** | 232 | `AA293QU` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE233`** | 233 | `AA266DV` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE235`** | 235 | `AB286AO` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE236`** | 236 | `AB656ET` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE237`** | 237 | `AC044HJ` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE238`** | 238 | `AF843IX` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE239`** | 239 | `MJN198` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE240`** | 240 | `NRM583` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE242`** | 242 | `OQR776` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE243`** | 243 | `AF009UM` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE244`** | 244 | `AF843IW` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE245`** | 245 | `AH237FI` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE246`** | 246 | `AH237FO` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE247`** | 247 | `AH237FJ` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE251`** | 251 | `AG629YX` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE252`** | 252 | `AG484BD` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE253`** | 253 | `AD316QO` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE258`** | 258 | `AI128UU` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE262`** | 262 | `AD402MU` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE263`** | 263 | `AF157VO` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `` | Vacío sin TD posterior (Dispo válida) |
-| **`GE267`** | 267 | `AF125UT` | **🎨 PINTAR #9fc5e8** | `STANDBY` | `SIN_VIAJE_MES` | `Disponible` | Vacío sin TD posterior (Dispo válida) |
-
 ### 📜 Muestra del Texto de Notas Hover (Top 10)
 
 #### [1] Celda `GE140` (Tractor `AG580QD`)
-> • CIPOLLETTI
-> • CINCO SALTOS
-> 10:48 Paso R Quinto /9;40 TVM 13/10 )8
+> 14:24 Victorica /12:58 Anchorena /11:59 Paso n galia  /10:48 Paso R Quinto /9;40 TVM 13/10 )8
 
 #### [2] Celda `GE27` (Tractor `AD217WS`)
-> NEUQUEN
-> 10:49 /9:41 /8:09 UTE
+> 12:58 /12:01 /10:49 /9:41 /8:09 UTE
 
-#### [3] Celda `GE10` (Tractor `AG426OA`)
-> NEUQUEN
+#### [3] Celda `GE13` (Tractor `AG426OD`)
+> 12:58 /12:01 TPH cargado con una cisterna
 
-#### [4] Celda `GE13` (Tractor `AG426OD`)
-> NEUQUEN
-> Cargado con rechazo a planta
+#### [4] Celda `GE58` (Tractor `AG870VE`)
+> 12:58 paso challaco /12:01 Paso C muerta /10:49 Base */9:30 entrnado en Circunvalacion /7:46 nqn
 
-#### [5] Celda `GE58` (Tractor `AG870VE`)
-> NEUQUEN
-> 10:49 Base */9:30 entrnado en Circunvalacion /7:46 nqn
+#### [5] Celda `GE59` (Tractor `AD355XA`)
+> 13:54 Ceferno /12:59 circunvalacion /12:01 PIN /10:49 /9:45 nqn  /7:46 Arroyito
 
-#### [6] Celda `GE59` (Tractor `AD355XA`)
-> PLAZA HUINCUL
-> 10:49 /9:45 nqn  /7:46 Arroyito
+#### [6] Celda `GE295` (Tractor `AF101XN`)
+> 14:27 Ceferno /13:57 Senillosa /12:59 /12:02 /10:50 /9:45 /7:46 B arioni
 
-#### [7] Celda `GE295` (Tractor `AF101XN`)
-> • CALEU
-> • RIO COLORADO
-> 10:50 /9:45 /7:46 B arioni
+#### [7] Celda `GE108` (Tractor `AG147LU`)
+> 14:27 /13:57 /12:59 UT E
 
 #### [8] Celda `GE102` (Tractor `AF858FE`)
-> • ZAPALA
-> • PLAZA HUINCUL
-> 10:50 /9:45 paso Los menucos /7:46 Paso Maquinchao
+> 14:28 Capex /13:57 3er puente /12:59 Acc Allen /12:04 Paso Cordoba /10:50 /9:45 paso Los menucos /7:46 Paso Maquinchao
 
 #### [9] Celda `GE122` (Tractor `AG341QX`)
-> • CUTRAL CO
-> • ARROYITO
 > 7:46 UTE
 
 #### [10] Celda `GG122` (Tractor `AG341QX`)
-> • PLOTTIER
-> • NEUQUEN
-> 10:50 /9:45 TPH cargadfo
+> 13:58 Arroyito /12:59 llegando a Arroyito /12:05  /10:50 /9:45 TPH cargadfo
 
 ---
 *Reporte autogenerado por el Motor Operativo Unificado — Central Operativa Diaria © 2026*
