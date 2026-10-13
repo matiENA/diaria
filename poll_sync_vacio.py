@@ -46,19 +46,31 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
+import socket
+
+socket.setdefaulttimeout(300)
+
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
-from sync_operativas_unificadas import UnifiedOperativasSync, get_day_column_indices, index_to_col_letter
+from sync_operativas_unificadas import (
+    UnifiedOperativasSync,
+    get_day_column_indices,
+    index_to_col_letter,
+    api_call_with_retry
+)
 from execution_shield import ExecutionShield, ShieldBlockedException, generate_audit_report
 
 BASE_DIR = Path(__file__).resolve().parent
 STATE_FILE = BASE_DIR / "last_poll_state.json"
 PYTHON_EXE = sys.executable
 
-DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
-DEFAULT_MOV_ID = "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc"
-SOURCE_TAB_RUTEOS = "Ruteos"
-TARGET_TAB_MOV = "OCTUBRE 2026- Mov.Unidades y Choferes"
+from config_operativas import (
+    RUTEOS_ID as DEFAULT_RUTEOS_ID,
+    MOVIMIENTOS_ID as DEFAULT_MOV_ID,
+    SOURCE_TAB_RUTEOS,
+    TARGET_TAB_MOV,
+    DIAS_TRANSICION_DUAL,
+)
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -117,19 +129,19 @@ class VacioPoller:
         let_s2 = index_to_col_letter(col_s2)
         mov_range = f"'{TARGET_TAB_MOV}'!{let_ch}3:{let_s2}350"
 
-        # Consulta combinada a Ruteos (1 sola petición HTTP)
-        res_ruteos = self._service.spreadsheets().values().batchGet(
+        # Consulta combinada a Ruteos (1 sola petición HTTP con reintento)
+        res_ruteos = api_call_with_retry(self._service.spreadsheets().values().batchGet(
             spreadsheetId=self.ruteos_id,
             ranges=ruteos_ranges,
             valueRenderOption="FORMATTED_VALUE"
-        ).execute()
+        ))
 
-        # Consulta combinada a Movimientos (1 sola petición HTTP)
-        res_mov = self._service.spreadsheets().values().get(
+        # Consulta combinada a Movimientos (1 sola petición HTTP con reintento)
+        res_mov = api_call_with_retry(self._service.spreadsheets().values().get(
             spreadsheetId=self.mov_id,
             range=mov_range,
             valueRenderOption="FORMATTED_VALUE"
-        ).execute()
+        ))
 
         elapsed_read = round(time.time() - t0, 2)
 

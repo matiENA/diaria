@@ -1,0 +1,17 @@
+{
+  "mes_actual": {
+    "nombre": "Octubre 2026",
+    "ruteos_id": "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o",
+    "tab_ruteos": "Ruteos",
+    "movimientos_id": "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc",
+    "tab_movimientos": "OCTUBRE 2026- Mov.Unidades y Choferes"
+  },
+  "mes_anterior": {
+    "nombre": "Septiembre 2026",
+    "ruteos_id": "1H-UoO3VmwNH7YMnvycKfZTyPbYcwpJNjbEKqU7MZKmM",
+    "tab_ruteos": "Liviano",
+    "movimientos_id": "1Bwj8WCykMn_FbZhQ_FqnDH3K_WCod52YTSvsaxIDNS8",
+    "tab_movimientos": "SEPTIEMBRE 2026- Mov.Unidades y Choferes"
+  },
+  "dias_transicion_lectura_dual": 7
+}

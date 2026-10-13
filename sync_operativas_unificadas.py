@@ -31,8 +31,21 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 
-# Prevenir caídas por timeout de sockets
-socket.setdefaulttimeout(180)
+# Prevenir caídas por timeout de sockets en Google API
+socket.setdefaulttimeout(300)
+
+def api_call_with_retry(api_req: Any, max_retries: int = 3, delay_sec: float = 5.0) -> Any:
+    """Ejecuta una petición de Google Sheets API con reintento automático y backoff ante latencia, 503 o timeout."""
+    for attempt in range(max_retries + 1):
+        try:
+            return api_req.execute(num_retries=3)
+        except Exception as e:
+            err_str = str(e).lower()
+            is_transient = any(k in err_str for k in ["timed out", "timeout", "503", "500", "502", "504", "unavailable", "internal error"])
+            if attempt < max_retries and is_transient:
+                time.sleep(delay_sec * (attempt + 1))
+                continue
+            raise
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -49,13 +62,18 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
 from execution_shield import ExecutionShield, generate_audit_report
-
-# IDs oficiales de planillas
-DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
-DEFAULT_MOV_ID = "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc"
-
-SOURCE_TAB_RUTEOS = "Ruteos"
-TARGET_TAB_MOV = "OCTUBRE 2026- Mov.Unidades y Choferes"
+from config_operativas import (
+    RUTEOS_ID as DEFAULT_RUTEOS_ID,
+    SOURCE_TAB_RUTEOS,
+    MOVIMIENTOS_ID as DEFAULT_MOV_ID,
+    TARGET_TAB_MOV,
+    RUTEOS_ANTERIOR_ID,
+    SOURCE_TAB_RUTEOS_ANTERIOR,
+    MOVIMIENTOS_ANTERIOR_ID,
+    TARGET_TAB_MOV_ANTERIOR,
+    DIAS_TRANSICION_DUAL,
+    CACHE_FILE_PREV_MONTH,
+)
 
 TARGET_COLOR_HEX = "#9fc5e8"
 TARGET_COLOR_RGB = {
@@ -72,7 +90,12 @@ EXCLUDED_DISPO_KEYWORDS = [
     "tvm",
     "tlc-cm",
     "tlc-ute",
-    "pp"
+    "pp",
+    "no disponible",
+    "nd",
+    "mantenimiento",
+    "reparación",
+    "reparacion",
 ]
 
 SCOPES = [
@@ -111,7 +134,7 @@ def get_day_column_indices(day: int) -> Tuple[int, int, int, int]:
     return col_chofer_idx, col_dispo_idx, col_slot1_idx, col_slot2_idx
 
 
-def parse_day_from_cell(fecha_val: str) -> Optional[int]:
+def parse_day_from_cell(fecha_val: str, expected_month: Optional[int] = None) -> Optional[int]:
     """Extrae el día (1 a 31) de números de serie Excel o strings de fecha."""
     if not fecha_val:
         return None
@@ -119,12 +142,18 @@ def parse_day_from_cell(fecha_val: str) -> Optional[int]:
     if s.isdigit():
         serial = int(s)
         dt = datetime(1899, 12, 30) + timedelta(days=serial)
-        if dt.month == 10:
+        if expected_month is None or dt.month == expected_month:
             return dt.day
+        return None
     if "/" in s:
         parts = s.split("/")
         if len(parts) >= 2 and parts[0].isdigit():
-            return int(parts[0])
+            d = int(parts[0])
+            if expected_month is not None and len(parts) >= 2 and parts[1].isdigit():
+                m = int(parts[1])
+                if m != expected_month:
+                    return None
+            return d
     return None
 
 
@@ -352,11 +381,19 @@ class UnifiedOperativasSync:
         credentials_path: Optional[str] = None,
         ruteos_id: str = DEFAULT_RUTEOS_ID,
         mov_id: str = DEFAULT_MOV_ID,
-        day: Optional[int] = None
+        ruteos_anterior_id: str = RUTEOS_ANTERIOR_ID,
+        tab_ruteos_anterior: str = SOURCE_TAB_RUTEOS_ANTERIOR,
+        dias_transicion_dual: int = DIAS_TRANSICION_DUAL,
+        day: Optional[int] = None,
+        target_month: Optional[int] = None
     ):
         self.ruteos_id = ruteos_id
         self.mov_id = mov_id
+        self.ruteos_anterior_id = ruteos_anterior_id
+        self.tab_ruteos_anterior = tab_ruteos_anterior
+        self.dias_transicion_dual = dias_transicion_dual
         self.day = day or datetime.now().day
+        self.target_month = target_month or datetime.now().month
         self._cached_sheet_id: Optional[int] = None
 
         if credentials_path and Path(credentials_path).exists():
@@ -374,24 +411,74 @@ class UnifiedOperativasSync:
         """Obtiene el sheetId numérico de la pestaña objetivo en Movimientos."""
         if self._cached_sheet_id is not None:
             return self._cached_sheet_id
-        meta = self._service.spreadsheets().get(
+        meta = api_call_with_retry(self._service.spreadsheets().get(
             spreadsheetId=self.mov_id,
             fields="sheets.properties"
-        ).execute()
+        ))
         for sheet in meta.get("sheets", []):
             if sheet["properties"]["title"] == TARGET_TAB_MOV:
                 self._cached_sheet_id = sheet["properties"]["sheetId"]
                 return self._cached_sheet_id
         raise ValueError(f"No se encontró la pestaña '{TARGET_TAB_MOV}' en {self.mov_id}")
 
-    def fetch_ruteos(self) -> List[List[str]]:
-        """Lectura única a Ruteos (1 sola petición HTTP)."""
-        res = self._service.spreadsheets().values().get(
+    def fetch_ruteos_actual(self) -> List[List[str]]:
+        """Lectura a Ruteos del mes actual (1 sola llamada HTTP con reintento)."""
+        res = api_call_with_retry(self._service.spreadsheets().values().get(
             spreadsheetId=self.ruteos_id,
             range=f"'{SOURCE_TAB_RUTEOS}'!A4:AL",
             valueRenderOption="FORMATTED_VALUE"
-        ).execute()
+        ))
         return res.get("values", [])
+
+    def fetch_ruteos_anterior(self, force_refresh: bool = False) -> List[List[str]]:
+        """
+        Lectura a Ruteos del mes anterior.
+        - Días 1 a 7 (transición) o con force_refresh=True: Lee en vivo desde Google Sheets y actualiza la caché local.
+        - Día 8 en adelante: Lee desde la caché local frozen (0 consumo de cuota API).
+        """
+        en_transicion = (self.day <= self.dias_transicion_dual)
+        usar_cache = (not en_transicion) and (not force_refresh) and CACHE_FILE_PREV_MONTH.exists()
+
+        if usar_cache:
+            try:
+                import json
+                with open(CACHE_FILE_PREV_MONTH, "r", encoding="utf-8") as f:
+                    rows = json.load(f)
+                    return rows
+            except Exception as e:
+                print(f"[WARN] No se pudo leer caché mes anterior ({e}). Consultando Google API...")
+
+        # Consulta en vivo al mes anterior
+        try:
+            res = api_call_with_retry(self._service.spreadsheets().values().get(
+                spreadsheetId=self.ruteos_anterior_id,
+                range=f"'{self.tab_ruteos_anterior}'!A4:AL",
+                valueRenderOption="FORMATTED_VALUE"
+            ))
+            rows = res.get("values", [])
+            # Guardar en caché local
+            try:
+                import json
+                with open(CACHE_FILE_PREV_MONTH, "w", encoding="utf-8") as f:
+                    json.dump(rows, f, ensure_ascii=False)
+            except Exception as e:
+                print(f"[WARN] Error guardando caché mes anterior: {e}")
+            return rows
+        except Exception as e:
+            print(f"[WARN] Error leyendo Ruteos mes anterior ({self.ruteos_anterior_id}): {e}")
+            return []
+
+    def fetch_combined_ruteos(self, force_refresh_prev: bool = False) -> Tuple[List[List[str]], List[List[str]]]:
+        """
+        Obtiene las filas de ambos meses: (filas_mes_anterior, filas_mes_actual).
+        """
+        prev_rows = self.fetch_ruteos_anterior(force_refresh=force_refresh_prev)
+        curr_rows = self.fetch_ruteos_actual()
+        return prev_rows, curr_rows
+
+    def fetch_ruteos(self) -> List[List[str]]:
+        """Lectura única a Ruteos del mes actual (compatibilidad retroactiva)."""
+        return self.fetch_ruteos_actual()
 
     def fetch_movimientos_targeted(self, day: int) -> Tuple[int, Dict[str, int], Dict[str, int], List[Dict[str, Any]]]:
         """
@@ -410,11 +497,11 @@ class UnifiedOperativasSync:
             f"'{TARGET_TAB_MOV}'!{let_ch}1:{let_s2}350"
         ]
 
-        res = self._service.spreadsheets().get(
+        res = api_call_with_retry(self._service.spreadsheets().get(
             spreadsheetId=self.mov_id,
             ranges=ranges,
             fields="sheets(data(rowData(values(formattedValue,note,userEnteredFormat.backgroundColor))))"
-        ).execute()
+        ))
 
         sheet_data = res["sheets"][0]["data"]
         raw_trks = sheet_data[0].get("rowData", [])
@@ -472,28 +559,31 @@ class UnifiedOperativasSync:
 
         return sheet_id, tractor_to_row, ut_to_row, day_rows
 
-    def analyze_trips_and_layers(self, day: int) -> Dict[str, Any]:
+    def analyze_trips_and_layers(self, day: int, force_refresh_prev: bool = False) -> Dict[str, Any]:
         """
         Ejecuta el análisis en capas en memoria para el día especificado:
         - Capa 1: Tracking de Col H
         - Capa 2: Vacío y Bordes de Col X
-        - Capa 3: Seguimiento y Pintado #9fc5e8
+        - Capa 3: Seguimiento y Pintado #9fc5e8 (con soporte dual/cache y unidades standby)
         """
-        ruteos_rows = self.fetch_ruteos()
+        prev_ruteos_rows, ruteos_rows = self.fetch_combined_ruteos(force_refresh_prev=force_refresh_prev)
         sheet_id, tractor_to_row, ut_to_row, day_rows = self.fetch_movimientos_targeted(day)
 
         col_ch, col_disp, col_s1, col_s2 = get_day_column_indices(day)
         let_s1 = index_to_col_letter(col_s1)
         let_s2 = index_to_col_letter(col_s2)
 
-        # 1. Analizar Ruteos cronológico completo para determinar el ÚLTIMO TD de cada tractor
+        # 1. Analizar Ruteos cronológico completo (mes anterior + mes actual)
+        # para determinar el ÚLTIMO TD y estado de cada tractor
         tractor_all_trips: Dict[str, List[Dict[str, Any]]] = {}
 
-        for idx, r in enumerate(ruteos_rows):
+        chronological_ruteos = prev_ruteos_rows + ruteos_rows
+
+        for idx, r in enumerate(chronological_ruteos):
             row_num = idx + 4
             raw_trk = str(r[0] if len(r) > 0 else "").upper().strip()
             trk = re.sub(r"[^A-Z0-9]", "", raw_trk)
-            if not trk or len(trk) < 5 or trk.startswith("202") or "OCT" in trk:
+            if not trk or len(trk) < 5 or trk.startswith("202") or "OCT" in trk or "SEP" in trk:
                 continue
 
             td = str(r[11] if len(r) > 11 else "").strip()
@@ -529,7 +619,7 @@ class UnifiedOperativasSync:
                 if last_trip["has_vacio"]:
                     tractors_vacio_sin_nuevo_td[trk] = last_trip
 
-        # 2. Agrupar datos de Ruteos correspondientes al DÍA seleccionado
+        # 2. Agrupar datos de Ruteos correspondientes al DÍA seleccionado (mes actual)
         # Estructura: (unit_key, day) -> { td: { vacio_header, localidades, tracking_extra } }
         trips_for_day: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
@@ -548,7 +638,7 @@ class UnifiedOperativasSync:
             if not (localidad or tracking_val or raw_vacio):
                 continue
 
-            trip_day = parse_day_from_cell(fecha_val)
+            trip_day = parse_day_from_cell(fecha_val, expected_month=self.target_month)
             if trip_day != day:
                 continue
 
@@ -695,23 +785,40 @@ class UnifiedOperativasSync:
             current_bg = cell_s1["bg"]
             has_color_celeste = is_color_9fc5e8(current_bg)
 
+            # Validaciones de filtros operativos
+            tiene_chofer = bool(chofer_val and chofer_val.strip() and not is_chofer_excluded(chofer_val))
+            dispo_valida = not is_dispo_excluded(dispo_val)
+            slot1_vacio = not cell_s1["value"]
+            bg_elegible = is_default_or_unpainted_bg(current_bg)
+
+            # Caso A: Unidad con viaje cuyo último registro es VACÍO sin nuevo TD
+            es_vacio_reciente = (trk in tractors_vacio_sin_nuevo_td)
+
+            # Caso B: Unidad SIN viajes en el mes analizado (Standby / Inactiva / Nueva)
+            # Requisito obligatorio: tener chofer asignado en Movimientos
+            es_standby_disponible = (trk not in tractor_all_trips) and tiene_chofer
+
+            # Filtro de chofer según el caso:
+            # - Si es vacío reciente: no debe tener chofer '1'
+            # - Si es standby sin viaje: debe tener chofer válido asignado
+            chofer_ok = (not is_chofer_excluded(chofer_val)) if es_vacio_reciente else tiene_chofer
+
             # ¿Califica para pintado?
-            # 1. Tiene reporte de vacío como su ÚLTIMO registro (sin nuevo TD posterior en Ruteos)
-            # 2. Celda no tiene viaje/texto asignado
-            # 3. Chofer no es '1'
-            # 4. Dispo no contiene localidades excluidas
-            # 5. Celda no tiene color manual de operador
             qualifies = (
-                (trk in tractors_vacio_sin_nuevo_td)
-                and (not cell_s1["value"])
-                and (not is_chofer_excluded(chofer_val))
-                and (not is_dispo_excluded(dispo_val))
-                and is_default_or_unpainted_bg(current_bg)
+                (es_vacio_reciente or es_standby_disponible)
+                and chofer_ok
+                and dispo_valida
+                and slot1_vacio
+                and bg_elegible
             )
 
             cell_coord = f"{let_s1}{r_num}"
 
             if qualifies and not has_color_celeste:
+                td_desc = tractors_vacio_sin_nuevo_td[trk]["td"] if es_vacio_reciente else "STANDBY"
+                vac_desc = tractors_vacio_sin_nuevo_td[trk]["vacio_header"] if es_vacio_reciente else "SIN_VIAJE_MES"
+                tipo_desc = "vacio_ruteos" if es_vacio_reciente else "standby_sin_viaje"
+
                 planned_color_updates.append({
                     "action": "paint",
                     "row": r_num,
@@ -719,12 +826,25 @@ class UnifiedOperativasSync:
                     "cell_coord": cell_coord,
                     "color": TARGET_COLOR_RGB,
                     "trk": trk,
-                    "td": tractors_vacio_sin_nuevo_td[trk]["td"],
-                    "vacio": tractors_vacio_sin_nuevo_td[trk]["vacio_header"],
+                    "td": td_desc,
+                    "vacio": vac_desc,
+                    "tipo": tipo_desc,
                     "dispo": dispo_val
                 })
             elif not qualifies and has_color_celeste:
                 # Cleanup automático: ya no cumple (ej. recibió nuevo TD o cambió Dispo)
+                reason = "nuevo TD o asignación de viaje"
+                if is_dispo_excluded(dispo_val):
+                    reason = f"Dispo excluida ({dispo_val})"
+                elif is_chofer_excluded(chofer_val):
+                    reason = f"Chofer excluido ({chofer_val})"
+                elif not slot1_vacio:
+                    reason = "Celda con texto/viaje asignado"
+                elif not bg_elegible:
+                    reason = "Fondo manual de operador"
+                elif not es_vacio_reciente and not es_standby_disponible:
+                    reason = "Sin viaje reciente con vacío ni chofer standby"
+
                 planned_color_updates.append({
                     "action": "clear",
                     "row": r_num,
@@ -732,7 +852,7 @@ class UnifiedOperativasSync:
                     "cell_coord": cell_coord,
                     "color": None,
                     "trk": trk,
-                    "reason": "nuevo TD o Dispo excluida"
+                    "reason": reason
                 })
 
         return {
@@ -852,10 +972,10 @@ class UnifiedOperativasSync:
         for i in range(0, len(requests), batch_size):
             chunk = requests[i:i + batch_size]
             body = {"requests": chunk}
-            self._service.spreadsheets().batchUpdate(
+            api_call_with_retry(self._service.spreadsheets().batchUpdate(
                 spreadsheetId=self.mov_id,
                 body=body
-            ).execute()
+            ))
             batches_executed += 1
 
         return {
@@ -892,6 +1012,11 @@ def main():
         help="Día del mes (1 a 31). Por defecto: día actual."
     )
     parser.add_argument(
+        "--force-refresh-prev",
+        action="store_true",
+        help="Fuerza la recarga de Ruteos del mes anterior en lugar de usar la caché local."
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=20,
@@ -906,14 +1031,14 @@ def main():
         print("=" * 80)
         print("  🚀 PIPELINE OPERATIVO UNIFICADO EN CAPAS: RUTEOS ➡️ MOVIMIENTOS")
         print(f"  Modo: {'APLICAR CAMBIOS EN GOOGLE SHEETS (--apply)' if args.apply else 'SIMULACIÓN (DRY-RUN)'}")
-        print(f"  Día Objetivo: {day_target} de octubre")
+        print(f"  Día Objetivo: {day_target} (Mes: {sync_month_name if 'sync_month_name' in locals() else 'Operativo'})")
         print("=" * 80)
 
         sync = UnifiedOperativasSync(day=day_target)
         print("\n[1/3] Conexión establecida con Service Account.")
-        print("      Ejecutando lectura dirigida a Google Sheets (2 llamadas HTTP)...")
+        print("      Ejecutando lectura dirigida a Google Sheets...")
 
-        analysis = sync.analyze_trips_and_layers(day_target)
+        analysis = sync.analyze_trips_and_layers(day_target, force_refresh_prev=args.force_refresh_prev)
         notes = analysis["notes"]
         borders = analysis["borders"]
         colors = analysis["colors"]

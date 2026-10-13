@@ -433,34 +433,16 @@ if HAS_SCHEDULER and os.getenv("ENABLE_SCHEDULER", "true").lower() == "true":
         replace_existing=True
     )
 
-    # 3. Seguimiento Vacío: cada 15m (primer disparo en 5 min)
+    # 3. Polling Inteligente Unificado (Tracking + VACÍO + Seguimiento en Capas): cada 10m (primer disparo en 5 min)
     scheduler.add_job(
-        lambda: run_command([PYTHON_EXE, "sync_seguimiento_vacio.py", "--apply"], "seguimiento"),
-        trigger=IntervalTrigger(minutes=15),
+        lambda: run_command([PYTHON_EXE, "poll_sync_vacio.py", "--apply", "--borders"], "poll_vacio"),
+        trigger=IntervalTrigger(minutes=10),
         next_run_time=now + timedelta(minutes=5),
-        id="job_seguimiento",
+        id="job_poll_vacio",
         replace_existing=True
     )
 
-    # 4. Tracking: cada 15m (primer disparo en 8 min)
-    scheduler.add_job(
-        lambda: run_command([PYTHON_EXE, "sync_ruteos_movimientos.py", "--apply"], "tracking"),
-        trigger=IntervalTrigger(minutes=15),
-        next_run_time=now + timedelta(minutes=8),
-        id="job_tracking",
-        replace_existing=True
-    )
-
-    # 5. VACIO: cada 20m (primer disparo en 12 min)
-    scheduler.add_job(
-        lambda: run_command([PYTHON_EXE, "sync_vacio.py", "--apply", "--borders"], "vacio"),
-        trigger=IntervalTrigger(minutes=20),
-        next_run_time=now + timedelta(minutes=12),
-        id="job_vacio",
-        replace_existing=True
-    )
-
-    # 6. Disponibilidad: diario 06:00 AM
+    # 4. Disponibilidad: diario 06:00 AM
     scheduler.add_job(
         lambda: run_command(["node", "pintarDisponibilidad.js"], "dispo"),
         trigger=CronTrigger(hour=6, minute=0),
@@ -469,4 +451,4 @@ if HAS_SCHEDULER and os.getenv("ENABLE_SCHEDULER", "true").lower() == "true":
     )
 
     scheduler.start()
-    print("[SCHEDULER] ✅ APScheduler iniciado con 6 tareas operativas escalonadas y serializadas.")
+    print("[SCHEDULER] ✅ APScheduler iniciado con 4 tareas operativas escalonadas y serializadas.")

@@ -70,15 +70,87 @@ class TestVacioFechasYCapas(unittest.TestCase):
         self.assertEqual(res, "/14HS VACIO /8HS CAMINO AÑELO")
 
     def test_dispo_exclusions(self):
-        """Verifica que las localidades excluidas en Dispo (como tlc-cm) se identifiquen correctamente."""
+        """Verifica que las localidades y estados no operativos en Dispo se identifiquen correctamente."""
         self.assertTrue(is_dispo_excluded("TLC-cm"))
         self.assertTrue(is_dispo_excluded("dock sud"))
         self.assertTrue(is_dispo_excluded("tds"))
         self.assertTrue(is_dispo_excluded("TLC"))
         self.assertTrue(is_dispo_excluded("PP"))
+        self.assertTrue(is_dispo_excluded("No Disponible"))
+        self.assertTrue(is_dispo_excluded("Mantenimiento"))
+        self.assertTrue(is_dispo_excluded("Reparación"))
+        self.assertTrue(is_dispo_excluded("ND"))
         self.assertFalse(is_dispo_excluded("en viaje CM"))
         self.assertFalse(is_dispo_excluded("Disponible"))
-        self.assertFalse(is_dispo_excluded("No Disponible"))
+        self.assertFalse(is_dispo_excluded(""))
+        self.assertFalse(is_dispo_excluded(None))
+
+    def test_parse_day_from_cell_month_filtering(self):
+        """Verifica que parse_day_from_cell filtre correctamente por mes objetivo."""
+        from sync_operativas_unificadas import parse_day_from_cell
+        # Strings con formato d/m/yyyy
+        self.assertEqual(parse_day_from_cell("13/10/2026", expected_month=10), 13)
+        self.assertEqual(parse_day_from_cell("28/09/2026", expected_month=10), None)
+        self.assertEqual(parse_day_from_cell("28/09/2026", expected_month=9), 28)
+        # Strings con formato d/m
+        self.assertEqual(parse_day_from_cell("12/10", expected_month=10), 12)
+        self.assertEqual(parse_day_from_cell("12/9", expected_month=10), None)
+
+    def test_standby_unit_qualifies_without_trips_in_ruteos(self):
+        """
+        Verifica que unidades sin ningún viaje en Ruteos (como AG426OA fila 10)
+        califiquen para pintado celeste si tienen chofer asignado y Dispo válida.
+        """
+        from sync_operativas_unificadas import is_default_or_unpainted_bg
+
+        trk = "AG426OA"
+        tractor_all_trips = {}  # 0 viajes en Ruteos
+        tractors_vacio_sin_nuevo_td = {}
+
+        # 1. Caso Fila 10 Día 13: Chofer asignado, Dispo vacía/None, celda vacía -> CALIFICA
+        chofer_val = "GUTIERREZ SANHUEZA MARCELO ANDRES"
+        dispo_val = ""
+        cell_s1 = {"value": "", "note": "7:42 UTE", "bg": None}
+        current_bg = cell_s1["bg"]
+
+        tiene_chofer = bool(chofer_val and chofer_val.strip() and not is_chofer_excluded(chofer_val))
+        dispo_valida = not is_dispo_excluded(dispo_val)
+        slot1_vacio = not cell_s1["value"]
+        bg_elegible = is_default_or_unpainted_bg(current_bg)
+
+        es_vacio_reciente = (trk in tractors_vacio_sin_nuevo_td)
+        es_standby_disponible = (trk not in tractor_all_trips) and tiene_chofer
+        chofer_ok = (not is_chofer_excluded(chofer_val)) if es_vacio_reciente else tiene_chofer
+
+        qualifies_day13 = (
+            (es_vacio_reciente or es_standby_disponible)
+            and chofer_ok
+            and dispo_valida
+            and slot1_vacio
+            and bg_elegible
+        )
+        self.assertTrue(qualifies_day13, "AG426OA debió calificar en día 13")
+
+        # 2. Caso Fila 10 Día 11: Chofer '1' y Dispo 'No Disponible' -> NO CALIFICA
+        chofer_d11 = "1"
+        dispo_d11 = "No Disponible"
+        tiene_chofer_d11 = bool(chofer_d11 and chofer_d11.strip() and not is_chofer_excluded(chofer_d11))
+        dispo_valida_d11 = not is_dispo_excluded(dispo_d11)
+        es_standby_d11 = (trk not in tractor_all_trips) and tiene_chofer_d11
+        qualifies_day11 = (
+            (es_vacio_reciente or es_standby_d11)
+            and tiene_chofer_d11
+            and dispo_valida_d11
+            and slot1_vacio
+            and bg_elegible
+        )
+        self.assertFalse(qualifies_day11, "AG426OA NO debió calificar en día 11")
+
+        # 3. Caso unidad sin chofer asignado (chofer vacío) -> NO CALIFICA
+        chofer_vacio = ""
+        tiene_chofer_vacio = bool(chofer_vacio and chofer_vacio.strip() and not is_chofer_excluded(chofer_vacio))
+        es_standby_vacio = (trk not in tractor_all_trips) and tiene_chofer_vacio
+        self.assertFalse(es_standby_vacio, "Unidad sin chofer no debe calificar como standby")
 
     def test_execution_shield_mutual_exclusion(self):
         """Verifica que ExecutionShield impida dos ejecuciones concurrentes."""

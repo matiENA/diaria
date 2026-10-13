@@ -83,7 +83,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 sync_ruteos_movimientos.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_ruteos_movimientos.py --apply\""
       },
       "id": "9ae3cd65-d7d9-4580-b316-65b60f033e0c",
       "name": "Ejecutar Sync Tracking (Col H)",
@@ -146,7 +146,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 sync_vacio.py --apply --borders\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_vacio.py --apply --borders\""
       },
       "id": "bf838ca9-8806-4275-83ad-17b7c99ccd50",
       "name": "Ejecutar Sync VACIO (Col X)",
@@ -209,7 +209,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 sync_seguimiento_vacio.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_seguimiento_vacio.py --apply\""
       },
       "id": "b52138fe-a60e-45fa-a24a-210fc520fbcf",
       "name": "Ejecutar Sync Seguimiento Vacío",
@@ -332,7 +332,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 main.py --seguridad-vial\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 main.py --seguridad-vial\""
       },
       "id": "e976d847-f690-42a7-9fe1-46b3d665af38",
       "name": "Ejecutar Sync Viajes Cordillera",
@@ -394,7 +394,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 main.py --conf-viaje\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 main.py --conf-viaje\""
       },
       "id": "23b1ec3a-79b0-4696-a855-74d99ebc06e9",
       "name": "Ejecutar Sync CONF. DE VIAJE",
@@ -436,7 +436,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 limpiar_vacio.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 limpiar_vacio.py --apply\""
       },
       "id": "89e26722-95c1-426d-be8c-c7fad076e818",
       "name": "Ejecutar Limpieza VACIO",
@@ -498,7 +498,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && pyw -3.13 poll_sync_vacio.py --apply --borders\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 poll_sync_vacio.py --apply --borders\""
       },
       "id": "bdcea852-fb63-4296-a2f6-2e27eb150adc",
       "name": "Ejecutar Polling Inteligente VACIO + Seguimiento",
@@ -660,12 +660,7 @@
       "main": [
         [
           {
-            "node": "Ejecutar Sync VACIO (Col X)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Ejecutar Sync Seguimiento Vacío",
+            "node": "Ejecutar Polling Inteligente VACIO + Seguimiento",
             "type": "main",
             "index": 0
           }
@@ -707,7 +702,10 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
   },
-  "updatedAt": "2026-10-09T12:40:01.144024"
+  "active": true,
+  "updatedAt": "2026-10-13T10:24:45.336179"
 }

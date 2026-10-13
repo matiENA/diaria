@@ -15,7 +15,9 @@ npm-debug.log*
 *.log
 last_sync_*.json
 last_poll_*.json
+cache_ruteos_*.json
 .sync.lock
+reportes/reporte_*.md
 
 # OS
 .DS_Store
