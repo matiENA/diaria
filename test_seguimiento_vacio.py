@@ -29,12 +29,22 @@ class TestSeguimientoVacio(unittest.TestCase):
         self.assertFalse(is_chofer_excluded(None))
 
     def test_dispo_excluded_keywords(self):
-        """Verifica que todas las localidades excluidas sean correctamente detectadas."""
+        """Verifica que las localidades excluidas (solo dock sud y tds) sean correctamente detectadas."""
         excluded_cases = [
             "DOCK SUD",
             "dock sud",
+            "Dock Sud",
             "TDS",
+            "tds",
             "en viaje TDS",
+            "TDS_base"
+        ]
+        for val in excluded_cases:
+            self.assertTrue(is_dispo_excluded(val), f"Debería excluirse: {val}")
+
+    def test_dispo_allowed_keywords(self):
+        """Verifica que las localidades y estados permitidos (incluyendo TLC, TLP, TVM, PP) no sean excluidos."""
+        allowed_cases = [
             "TLC",
             "tlc",
             "TLP",
@@ -47,14 +57,7 @@ class TestSeguimientoVacio(unittest.TestCase):
             "tlc-ute",
             "PP",
             "pp",
-            "en viaje PP"
-        ]
-        for val in excluded_cases:
-            self.assertTrue(is_dispo_excluded(val), f"Debería excluirse: {val}")
-
-    def test_dispo_allowed_keywords(self):
-        """Verifica que las localidades y estados permitidos no sean excluidos."""
-        allowed_cases = [
+            "en viaje PP",
             "Mantenimiento",
             "Reparación",
             "en viaje EURO",

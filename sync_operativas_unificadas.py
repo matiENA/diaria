@@ -85,17 +85,6 @@ TARGET_COLOR_RGB = {
 EXCLUDED_DISPO_KEYWORDS = [
     "dock sud",
     "tds",
-    "tlc",
-    "tlp",
-    "tvm",
-    "tlc-cm",
-    "tlc-ute",
-    "pp",
-    "no disponible",
-    "nd",
-    "mantenimiento",
-    "reparación",
-    "reparacion",
 ]
 
 SCOPES = [
@@ -395,6 +384,10 @@ class UnifiedOperativasSync:
         self.day = day or datetime.now().day
         self.target_month = target_month or datetime.now().month
         self._cached_sheet_id: Optional[int] = None
+        self._cached_prev_rows: Optional[List[List[str]]] = None
+        self._cached_curr_rows: Optional[List[List[str]]] = None
+        self._cached_tractor_to_row: Optional[Dict[str, int]] = None
+        self._cached_ut_to_row: Optional[Dict[str, int]] = None
 
         if credentials_path and Path(credentials_path).exists():
             self.creds_path = credentials_path
@@ -471,10 +464,13 @@ class UnifiedOperativasSync:
     def fetch_combined_ruteos(self, force_refresh_prev: bool = False) -> Tuple[List[List[str]], List[List[str]]]:
         """
         Obtiene las filas de ambos meses: (filas_mes_anterior, filas_mes_actual).
+        Reutiliza la memoria interna si ya fue cargada para acelerar recorridos multi-día.
         """
-        prev_rows = self.fetch_ruteos_anterior(force_refresh=force_refresh_prev)
-        curr_rows = self.fetch_ruteos_actual()
-        return prev_rows, curr_rows
+        if self._cached_curr_rows is None:
+            self._cached_curr_rows = self.fetch_ruteos_actual()
+        if self._cached_prev_rows is None or force_refresh_prev:
+            self._cached_prev_rows = self.fetch_ruteos_anterior(force_refresh=force_refresh_prev)
+        return self._cached_prev_rows, self._cached_curr_rows
 
     def fetch_ruteos(self) -> List[List[str]]:
         """Lectura única a Ruteos del mes actual (compatibilidad retroactiva)."""
@@ -491,42 +487,57 @@ class UnifiedOperativasSync:
         let_ch = index_to_col_letter(col_ch)
         let_s2 = index_to_col_letter(col_s2)
 
-        ranges = [
-            f"'{TARGET_TAB_MOV}'!E1:E350",
-            f"'{TARGET_TAB_MOV}'!C1:C350",
-            f"'{TARGET_TAB_MOV}'!{let_ch}1:{let_s2}350"
-        ]
+        if self._cached_tractor_to_row is not None and self._cached_ut_to_row is not None:
+            ranges = [
+                f"'{TARGET_TAB_MOV}'!{let_ch}1:{let_s2}350"
+            ]
+            res = api_call_with_retry(self._service.spreadsheets().get(
+                spreadsheetId=self.mov_id,
+                ranges=ranges,
+                fields="sheets(data(rowData(values(formattedValue,note,userEnteredFormat.backgroundColor))))"
+            ))
+            sheet_data = res["sheets"][0]["data"]
+            raw_day = sheet_data[0].get("rowData", [])
+            tractor_to_row = self._cached_tractor_to_row
+            ut_to_row = self._cached_ut_to_row
+        else:
+            ranges = [
+                f"'{TARGET_TAB_MOV}'!E1:E350",
+                f"'{TARGET_TAB_MOV}'!C1:C350",
+                f"'{TARGET_TAB_MOV}'!{let_ch}1:{let_s2}350"
+            ]
+            res = api_call_with_retry(self._service.spreadsheets().get(
+                spreadsheetId=self.mov_id,
+                ranges=ranges,
+                fields="sheets(data(rowData(values(formattedValue,note,userEnteredFormat.backgroundColor))))"
+            ))
+            sheet_data = res["sheets"][0]["data"]
+            raw_trks = sheet_data[0].get("rowData", [])
+            raw_uts = sheet_data[1].get("rowData", [])
+            raw_day = sheet_data[2].get("rowData", []) if len(sheet_data) > 2 else []
 
-        res = api_call_with_retry(self._service.spreadsheets().get(
-            spreadsheetId=self.mov_id,
-            ranges=ranges,
-            fields="sheets(data(rowData(values(formattedValue,note,userEnteredFormat.backgroundColor))))"
-        ))
+            tractor_to_row: Dict[str, int] = {}
+            ut_to_row: Dict[str, int] = {}
 
-        sheet_data = res["sheets"][0]["data"]
-        raw_trks = sheet_data[0].get("rowData", [])
-        raw_uts = sheet_data[1].get("rowData", [])
-        raw_day = sheet_data[2].get("rowData", []) if len(sheet_data) > 2 else []
+            for idx, r in enumerate(raw_trks):
+                row_num = idx + 1
+                vals = r.get("values", [])
+                if vals and vals[0]:
+                    raw_trk = str(vals[0].get("formattedValue") or "").strip().upper()
+                    clean_trk = re.sub(r"[^A-Z0-9]", "", raw_trk)
+                    if clean_trk and len(clean_trk) >= 5:
+                        tractor_to_row[clean_trk] = row_num
 
-        tractor_to_row: Dict[str, int] = {}
-        ut_to_row: Dict[str, int] = {}
+            for idx, r in enumerate(raw_uts):
+                row_num = idx + 1
+                vals = r.get("values", [])
+                if vals and vals[0]:
+                    raw_ut = str(vals[0].get("formattedValue") or "").strip().replace(".0", "")
+                    if raw_ut and raw_ut.isdigit():
+                        ut_to_row[raw_ut] = row_num
 
-        for idx, r in enumerate(raw_trks):
-            row_num = idx + 1
-            vals = r.get("values", [])
-            if vals and vals[0]:
-                raw_trk = str(vals[0].get("formattedValue") or "").strip().upper()
-                clean_trk = re.sub(r"[^A-Z0-9]", "", raw_trk)
-                if clean_trk and len(clean_trk) >= 5:
-                    tractor_to_row[clean_trk] = row_num
-
-        for idx, r in enumerate(raw_uts):
-            row_num = idx + 1
-            vals = r.get("values", [])
-            if vals and vals[0]:
-                raw_ut = str(vals[0].get("formattedValue") or "").strip().replace(".0", "")
-                if raw_ut and raw_ut.isdigit():
-                    ut_to_row[raw_ut] = row_num
+            self._cached_tractor_to_row = tractor_to_row
+            self._cached_ut_to_row = ut_to_row
 
         # Estructurar filas del día
         day_rows = []
@@ -559,7 +570,12 @@ class UnifiedOperativasSync:
 
         return sheet_id, tractor_to_row, ut_to_row, day_rows
 
-    def analyze_trips_and_layers(self, day: int, force_refresh_prev: bool = False) -> Dict[str, Any]:
+    def analyze_trips_and_layers(
+        self,
+        day: int,
+        force_refresh_prev: bool = False,
+        eval_colors: bool = True
+    ) -> Dict[str, Any]:
         """
         Ejecuta el análisis en capas en memoria para el día especificado:
         - Capa 1: Tracking de Col H
@@ -771,86 +787,87 @@ class UnifiedOperativasSync:
 
         # 4. Capa 3: Evaluación de Pintado Celeste (#9fc5e8) y Cleanup
         # Se evalúa sobre la celda del día (Slot 1) para cada tractor indexado
-        for trk, r_num in tractor_to_row.items():
-            if r_num not in day_rows_by_num:
-                continue
+        if eval_colors:
+            for trk, r_num in tractor_to_row.items():
+                if r_num not in day_rows_by_num:
+                    continue
 
-            r_info = day_rows_by_num[r_num]
-            cell_s1 = r_info["slot1"]
-            dispo_val = r_info["dispo"]
-            chofer_val = r_info["chofer"]
-            current_bg = cell_s1["bg"]
-            has_color_celeste = is_color_9fc5e8(current_bg)
+                r_info = day_rows_by_num[r_num]
+                cell_s1 = r_info["slot1"]
+                dispo_val = r_info["dispo"]
+                chofer_val = r_info["chofer"]
+                current_bg = cell_s1["bg"]
+                has_color_celeste = is_color_9fc5e8(current_bg)
 
-            # Validaciones de filtros operativos
-            tiene_chofer = bool(chofer_val and chofer_val.strip() and not is_chofer_excluded(chofer_val))
-            dispo_valida = not is_dispo_excluded(dispo_val)
-            slot1_vacio = not cell_s1["value"]
-            bg_elegible = is_default_or_unpainted_bg(current_bg)
+                # Validaciones de filtros operativos
+                tiene_chofer = bool(chofer_val and chofer_val.strip() and not is_chofer_excluded(chofer_val))
+                dispo_valida = not is_dispo_excluded(dispo_val)
+                slot1_vacio = not cell_s1["value"]
+                bg_elegible = is_default_or_unpainted_bg(current_bg)
 
-            # Caso A: Unidad con viaje cuyo último registro es VACÍO sin nuevo TD
-            es_vacio_reciente = (trk in tractors_vacio_sin_nuevo_td)
+                # Caso A: Unidad con viaje cuyo último registro es VACÍO sin nuevo TD
+                es_vacio_reciente = (trk in tractors_vacio_sin_nuevo_td)
 
-            # Caso B: Unidad SIN viajes en el mes analizado (Standby / Inactiva / Nueva)
-            # Requisito obligatorio: tener chofer asignado en Movimientos
-            es_standby_disponible = (trk not in tractor_all_trips) and tiene_chofer
+                # Caso B: Unidad SIN viajes en el mes analizado (Standby / Inactiva / Nueva)
+                # Requisito obligatorio: tener chofer asignado en Movimientos
+                es_standby_disponible = (trk not in tractor_all_trips) and tiene_chofer
 
-            # Filtro de chofer según el caso:
-            # - Si es vacío reciente: no debe tener chofer '1'
-            # - Si es standby sin viaje: debe tener chofer válido asignado
-            chofer_ok = (not is_chofer_excluded(chofer_val)) if es_vacio_reciente else tiene_chofer
+                # Filtro de chofer según el caso:
+                # - Si es vacío reciente: no debe tener chofer '1'
+                # - Si es standby sin viaje: debe tener chofer válido asignado
+                chofer_ok = (not is_chofer_excluded(chofer_val)) if es_vacio_reciente else tiene_chofer
 
-            # ¿Califica para pintado?
-            qualifies = (
-                (es_vacio_reciente or es_standby_disponible)
-                and chofer_ok
-                and dispo_valida
-                and slot1_vacio
-                and bg_elegible
-            )
+                # ¿Califica para pintado?
+                qualifies = (
+                    (es_vacio_reciente or es_standby_disponible)
+                    and chofer_ok
+                    and dispo_valida
+                    and slot1_vacio
+                    and bg_elegible
+                )
 
-            cell_coord = f"{let_s1}{r_num}"
+                cell_coord = f"{let_s1}{r_num}"
 
-            if qualifies and not has_color_celeste:
-                td_desc = tractors_vacio_sin_nuevo_td[trk]["td"] if es_vacio_reciente else "STANDBY"
-                vac_desc = tractors_vacio_sin_nuevo_td[trk]["vacio_header"] if es_vacio_reciente else "SIN_VIAJE_MES"
-                tipo_desc = "vacio_ruteos" if es_vacio_reciente else "standby_sin_viaje"
+                if qualifies and not has_color_celeste:
+                    td_desc = tractors_vacio_sin_nuevo_td[trk]["td"] if es_vacio_reciente else "STANDBY"
+                    vac_desc = tractors_vacio_sin_nuevo_td[trk]["vacio_header"] if es_vacio_reciente else "SIN_VIAJE_MES"
+                    tipo_desc = "vacio_ruteos" if es_vacio_reciente else "standby_sin_viaje"
 
-                planned_color_updates.append({
-                    "action": "paint",
-                    "row": r_num,
-                    "col_idx": col_s1,
-                    "cell_coord": cell_coord,
-                    "color": TARGET_COLOR_RGB,
-                    "trk": trk,
-                    "td": td_desc,
-                    "vacio": vac_desc,
-                    "tipo": tipo_desc,
-                    "dispo": dispo_val
-                })
-            elif not qualifies and has_color_celeste:
-                # Cleanup automático: ya no cumple (ej. recibió nuevo TD o cambió Dispo)
-                reason = "nuevo TD o asignación de viaje"
-                if is_dispo_excluded(dispo_val):
-                    reason = f"Dispo excluida ({dispo_val})"
-                elif is_chofer_excluded(chofer_val):
-                    reason = f"Chofer excluido ({chofer_val})"
-                elif not slot1_vacio:
-                    reason = "Celda con texto/viaje asignado"
-                elif not bg_elegible:
-                    reason = "Fondo manual de operador"
-                elif not es_vacio_reciente and not es_standby_disponible:
-                    reason = "Sin viaje reciente con vacío ni chofer standby"
+                    planned_color_updates.append({
+                        "action": "paint",
+                        "row": r_num,
+                        "col_idx": col_s1,
+                        "cell_coord": cell_coord,
+                        "color": TARGET_COLOR_RGB,
+                        "trk": trk,
+                        "td": td_desc,
+                        "vacio": vac_desc,
+                        "tipo": tipo_desc,
+                        "dispo": dispo_val
+                    })
+                elif not qualifies and has_color_celeste:
+                    # Cleanup automático: ya no cumple (ej. recibió nuevo TD o cambió Dispo)
+                    reason = "nuevo TD o asignación de viaje"
+                    if is_dispo_excluded(dispo_val):
+                        reason = f"Dispo excluida ({dispo_val})"
+                    elif is_chofer_excluded(chofer_val):
+                        reason = f"Chofer excluido ({chofer_val})"
+                    elif not slot1_vacio:
+                        reason = "Celda con texto/viaje asignado"
+                    elif not bg_elegible:
+                        reason = "Fondo manual de operador"
+                    elif not es_vacio_reciente and not es_standby_disponible:
+                        reason = "Sin viaje reciente con vacío ni chofer standby"
 
-                planned_color_updates.append({
-                    "action": "clear",
-                    "row": r_num,
-                    "col_idx": col_s1,
-                    "cell_coord": cell_coord,
-                    "color": None,
-                    "trk": trk,
-                    "reason": reason
-                })
+                    planned_color_updates.append({
+                        "action": "clear",
+                        "row": r_num,
+                        "col_idx": col_s1,
+                        "cell_coord": cell_coord,
+                        "color": None,
+                        "trk": trk,
+                        "reason": reason
+                    })
 
         return {
             "sheet_id": sheet_id,
@@ -980,6 +997,50 @@ class UnifiedOperativasSync:
             "batches": batches_executed
         }
 
+    def sync_multi_days(
+        self,
+        days: List[int],
+        current_day: Optional[int] = None,
+        apply: bool = False,
+        apply_borders: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Sincroniza una secuencia o ventana de días.
+        - Días pasados (d != current_day): actualiza Capa 1 y Capa 2 (notas de tracking/vacío y bordes SOLID_MEDIUM).
+        - Día actual (d == current_day): actualiza Capa 1, 2 y Capa 3 (colores #9fc5e8 y cleanup).
+        """
+        cur_d = current_day or datetime.now().day
+        results = {
+            "days_analyzed": days,
+            "total_notes": 0,
+            "total_borders": 0,
+            "total_colors": 0,
+            "day_summaries": {},
+            "batch_results": []
+        }
+
+        for d in days:
+            eval_col = (d == cur_d)
+            analysis = self.analyze_trips_and_layers(d, eval_colors=eval_col)
+            n_cnt = len(analysis["notes"])
+            b_cnt = len(analysis["borders"])
+            c_cnt = len(analysis["colors"])
+
+            results["total_notes"] += n_cnt
+            results["total_borders"] += b_cnt
+            results["total_colors"] += c_cnt
+            results["day_summaries"][d] = {
+                "notes": n_cnt,
+                "borders": b_cnt,
+                "colors": c_cnt
+            }
+
+            if apply and (n_cnt > 0 or b_cnt > 0 or c_cnt > 0):
+                batch_res = self.apply_atomic_batch(analysis, apply_borders=apply_borders)
+                results["batch_results"].append({"day": d, **batch_res})
+
+        return results
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -1006,7 +1067,19 @@ def main():
         "--day",
         type=int,
         default=None,
-        help="Día del mes (1 a 31). Por defecto: día actual."
+        help="Día específico del mes (1 a 31)."
+    )
+    parser.add_argument(
+        "--days",
+        type=str,
+        default=None,
+        help="Días específicos separados por coma o rango (ej: 10-14 o 10,11,12)."
+    )
+    parser.add_argument(
+        "--window",
+        type=int,
+        default=None,
+        help="Cantidad de días de ventana retroactiva a sincronizar hasta hoy (ej: --window 5)."
     )
     parser.add_argument(
         "--force-refresh-prev",
@@ -1023,17 +1096,57 @@ def main():
 
     with ExecutionShield("Sincronización Unificada en Capas"):
         t0 = time.time()
-        day_target = args.day or datetime.now().day
+        today = datetime.now().day
+        if args.days:
+            target_days = []
+            for part in args.days.split(","):
+                part = part.strip()
+                if "-" in part:
+                    p_start, p_end = part.split("-", 1)
+                    target_days.extend(range(int(p_start.strip()), int(p_end.strip()) + 1))
+                elif part.isdigit():
+                    target_days.append(int(part))
+        elif args.window:
+            target_days = list(range(max(1, today - (args.window - 1)), today + 1))
+        elif args.day:
+            target_days = [args.day]
+        else:
+            target_days = [today]
+
+        day_target = target_days[0] if len(target_days) == 1 else today
 
         print("=" * 80)
         print("  🚀 PIPELINE OPERATIVO UNIFICADO EN CAPAS: RUTEOS ➡️ MOVIMIENTOS")
         print(f"  Modo: {'APLICAR CAMBIOS EN GOOGLE SHEETS (--apply)' if args.apply else 'SIMULACIÓN (DRY-RUN)'}")
-        print(f"  Día Objetivo: {day_target} (Mes: {sync_month_name if 'sync_month_name' in locals() else 'Operativo'})")
+        if len(target_days) > 1:
+            print(f"  Días Objetivo: {target_days} (Ventana rodante / Multi-día) | Día activo: {today}")
+        else:
+            print(f"  Día Objetivo: {day_target} (Mes: Operativo)")
         print("=" * 80)
 
         sync = UnifiedOperativasSync(day=day_target)
         print("\n[1/3] Conexión establecida con Service Account.")
         print("      Ejecutando lectura dirigida a Google Sheets...")
+
+        if len(target_days) > 1:
+            multi_res = sync.sync_multi_days(
+                days=target_days,
+                current_day=today,
+                apply=args.apply,
+                apply_borders=args.borders
+            )
+            elapsed_total = round(time.time() - t0, 2)
+            print(f"\n[2/3] Análisis multi-día completado en {elapsed_total}s:")
+            for d, s in multi_res["day_summaries"].items():
+                print(f"      - Día {d:>2}: {s['notes']:>3} notas | {s['borders']:>3} bordes | {s['colors']:>3} colores")
+            print(f"\n      Totales: {multi_res['total_notes']} notas, {multi_res['total_borders']} bordes, {multi_res['total_colors']} colores.")
+
+            if args.apply:
+                total_ops = sum(b.get("updated_count", 0) for b in multi_res["batch_results"])
+                print(f"\n[OK] ✅ ¡Sincronización multi-día completada en {elapsed_total}s! ({total_ops} operaciones en Sheets).")
+            else:
+                print(f"\n[INFO] Simulación multi-día finalizada en {elapsed_total}s. Cero escrituras realizadas.")
+            return
 
         analysis = sync.analyze_trips_and_layers(day_target, force_refresh_prev=args.force_refresh_prev)
         notes = analysis["notes"]

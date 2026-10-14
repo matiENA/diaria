@@ -75,12 +75,6 @@ TARGET_COLOR_RGB = {
 EXCLUDED_DISPO_KEYWORDS = [
     "dock sud",
     "tds",
-    "tlc",
-    "tlp",
-    "tvm",
-    "tlc-cm",
-    "tlc-ute",
-    "pp"
 ]
 
 SCOPES = [

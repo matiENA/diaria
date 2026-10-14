@@ -113,16 +113,18 @@ class TestVacioFechasYCapas(unittest.TestCase):
         self.assertEqual(res, "/14HS VACIO /8HS CAMINO AÑELO")
 
     def test_dispo_exclusions(self):
-        """Verifica que las localidades y estados no operativos en Dispo se identifiquen correctamente."""
-        self.assertTrue(is_dispo_excluded("TLC-cm"))
+        """Verifica que las localidades de prevención en Dispo se identifiquen correctamente (solo dock sud y tds)."""
         self.assertTrue(is_dispo_excluded("dock sud"))
+        self.assertTrue(is_dispo_excluded("DOCK SUD"))
         self.assertTrue(is_dispo_excluded("tds"))
-        self.assertTrue(is_dispo_excluded("TLC"))
-        self.assertTrue(is_dispo_excluded("PP"))
-        self.assertTrue(is_dispo_excluded("No Disponible"))
-        self.assertTrue(is_dispo_excluded("Mantenimiento"))
-        self.assertTrue(is_dispo_excluded("Reparación"))
-        self.assertTrue(is_dispo_excluded("ND"))
+        self.assertTrue(is_dispo_excluded("TDS"))
+        self.assertFalse(is_dispo_excluded("TLC-cm"))
+        self.assertFalse(is_dispo_excluded("TLC"))
+        self.assertFalse(is_dispo_excluded("PP"))
+        self.assertFalse(is_dispo_excluded("No Disponible"))
+        self.assertFalse(is_dispo_excluded("Mantenimiento"))
+        self.assertFalse(is_dispo_excluded("Reparación"))
+        self.assertFalse(is_dispo_excluded("ND"))
         self.assertFalse(is_dispo_excluded("en viaje CM"))
         self.assertFalse(is_dispo_excluded("Disponible"))
         self.assertFalse(is_dispo_excluded(""))

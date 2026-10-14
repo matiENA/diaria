@@ -83,12 +83,14 @@ class VacioPoller:
         self,
         ruteos_id: str = DEFAULT_RUTEOS_ID,
         mov_id: str = DEFAULT_MOV_ID,
-        day: Optional[int] = None
+        day: Optional[int] = None,
+        window: int = 5
     ):
         self.ruteos_id = ruteos_id
         self.mov_id = mov_id
         self.day_explicit = (day is not None)
         self.day = day or datetime.now().day
+        self.window = window
         self._creds = get_google_credentials(scopes=SCOPES)
         self._service = build("sheets", "v4", credentials=self._creds)
 
@@ -201,55 +203,70 @@ class VacioPoller:
         self,
         apply: bool = False,
         borders: bool = True,
-        tasks: Optional[List[str]] = None
+        tasks: Optional[List[str]] = None,
+        days: Optional[List[int]] = None
     ) -> Dict[str, Any]:
         """
         Fase 2: Ejecuta la sincronización completa en capas (Tracking, VACÍO con bordes y Seguimiento #9fc5e8)
-        en un único recorrido en memoria y 1 batchUpdate consolidado.
+        abarcando una ventana de días para capturar viajes de campo multi-día y retroactivos.
         """
         results = {}
         t_start = time.time()
 
+        today = datetime.now().day
+        if days:
+            target_days = days
+        elif self.day_explicit:
+            target_days = [self.day]
+        else:
+            target_days = list(range(max(1, today - (self.window - 1)), today + 1))
+
         print("\n" + "="*80)
         print(f"  FASE 2: EJECUTANDO SINCRONIZACIÓN EN CAPAS (MOTOR UNIFICADO)")
         print(f"  Modo: {'APLICAR CAMBIOS (--apply)' if apply else 'SIMULACIÓN (dry-run)'}")
-        print(f"  Día objetivo: {self.day} | Bordes: {borders}")
+        print(f"  Días objetivo: {target_days} (Día activo/hoy: {today}) | Bordes: {borders}")
         print("="*80)
 
         try:
-            sync_runner = UnifiedOperativasSync(day=self.day)
-            analysis = sync_runner.analyze_trips_and_layers(self.day)
+            sync_runner = UnifiedOperativasSync(day=today)
+            multi_res = sync_runner.sync_multi_days(
+                days=target_days,
+                current_day=today,
+                apply=apply,
+                apply_borders=borders
+            )
 
-            notes_cnt = len(analysis["notes"])
-            borders_cnt = len(analysis["borders"])
-            paints_cnt = sum(1 for c in analysis["colors"] if c["action"] == "paint")
-            clears_cnt = sum(1 for c in analysis["colors"] if c["action"] == "clear")
+            print(f"[FASE 2.1] ✅ Análisis multi-día completado:")
+            for d, s in multi_res["day_summaries"].items():
+                print(f"           - Día {d:>2}: {s['notes']:>3} notas | {s['borders']:>3} bordes | {s['colors']:>3} colores")
+            print(f"           Totales: {multi_res['total_notes']} notas, {multi_res['total_borders']} bordes, {multi_res['total_colors']} colores")
 
-            print(f"[FASE 2.1] ✅ Análisis en capas completado:")
-            print(f"           - Notas actualizadas:  {notes_cnt}")
-            print(f"           - Bordes SOLID_MEDIUM: {borders_cnt}")
-            print(f"           - Seguimiento Celeste: +{paints_cnt} pintados / -{clears_cnt} limpiados")
+            results["success"] = True
+            results["notes_count"] = multi_res["total_notes"]
+            results["borders_count"] = multi_res["total_borders"]
+            results["colors_count"] = multi_res["total_colors"]
+            results["day_summaries"] = multi_res["day_summaries"]
+            results["batch_results"] = multi_res["batch_results"]
 
             if apply:
-                print(f"[FASE 2.2] 🚀 Aplicando batchUpdate consolidado a Google Sheets...")
-                batch_res = sync_runner.apply_atomic_batch(analysis, apply_borders=borders)
-                print(f"           Operaciones aplicadas: {batch_res['updated_count']} en {batch_res['batches']} lotes.")
-                results["batch_res"] = batch_res
+                total_ops = sum(b.get("updated_count", 0) for b in multi_res["batch_results"])
+                print(f"[FASE 2.2] 🚀 Cambios aplicados en Google Sheets: {total_ops} celdas/bordes/colores modificados.")
             else:
                 print(f"[FASE 2.2] ℹ️ Modo simulación. Cero escrituras en Google Sheets.")
 
-            results["success"] = True
-            results["notes_count"] = notes_cnt
-            results["borders_count"] = borders_cnt
-            results["colors_count"] = len(analysis["colors"])
-
             # Generar reporte de auditoría en la carpeta reportes/
             total_elapsed = round(time.time() - t_start, 2)
+            dummy_analysis = {
+                "day": today,
+                "notes": [{"cell_coord": f"D{d}", "new_note": f"{s['notes']} notas"} for d, s in multi_res["day_summaries"].items() if s["notes"] > 0],
+                "borders": [{"cell_coord": f"D{d}"} for d, s in multi_res["day_summaries"].items() if s["borders"] > 0],
+                "colors": [{"cell_coord": f"D{d}", "action": "paint"} for d, s in multi_res["day_summaries"].items() if s["colors"] > 0]
+            }
             report_file = generate_audit_report(
-                analysis=analysis,
-                batch_result=results.get("batch_res"),
+                analysis=dummy_analysis,
+                batch_result={"updated_count": sum(b.get("updated_count", 0) for b in multi_res["batch_results"]), "batches": len(multi_res["batch_results"])},
                 apply=apply,
-                mode="Polling Inteligente Unificado",
+                mode="Polling Inteligente Unificado Multi-Día",
                 duration_sec=total_elapsed
             )
             results["report_file"] = report_file
@@ -293,7 +310,19 @@ def main():
         "--day",
         type=int,
         default=None,
-        help="Día del mes de octubre (por defecto toma el día actual)."
+        help="Día específico del mes (por defecto sincroniza ventana rodante de últimos N días)."
+    )
+    parser.add_argument(
+        "--days",
+        type=str,
+        default=None,
+        help="Días específicos separados por coma o rango (ej: 10-14 o 10,11,12)."
+    )
+    parser.add_argument(
+        "--window",
+        type=int,
+        default=5,
+        help="Cantidad de días de ventana retroactiva a sincronizar si no se pasa --day (default: 5)."
     )
     parser.add_argument(
         "--check-only",
@@ -324,7 +353,18 @@ def main():
     if "all" in selected_tasks:
         selected_tasks = ["vacio", "seguimiento", "tracking"]
 
-    poller = VacioPoller(day=args.day)
+    parsed_days = None
+    if args.days:
+        parsed_days = []
+        for part in args.days.split(","):
+            part = part.strip()
+            if "-" in part:
+                p_start, p_end = part.split("-", 1)
+                parsed_days.extend(range(int(p_start.strip()), int(p_end.strip()) + 1))
+            elif part.isdigit():
+                parsed_days.append(int(part))
+
+    poller = VacioPoller(day=args.day, window=args.window)
 
     def execute_single_poll() -> int:
         prev_state = poller.load_previous_state()
@@ -354,7 +394,8 @@ def main():
         results = poller.run_sync_tasks(
             apply=args.apply,
             borders=args.borders,
-            tasks=selected_tasks
+            tasks=selected_tasks,
+            days=parsed_days
         )
 
         # Actualizar estado guardado
