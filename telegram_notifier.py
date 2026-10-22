@@ -62,6 +62,53 @@ def send_telegram_message(text: str, parse_mode: str = "HTML") -> bool:
         return False
 
 
+def clean_error_message(raw_err: str) -> str:
+    """
+    Detecta y sanitiza respuestas HTML crudas (ej. errores 502/503 de Google Front End con tags y estilos CSS)
+    transformándolas en mensajes legibles y claros para Telegram.
+    """
+    if not raw_err:
+        return "Error no especificado"
+
+    lower_err = raw_err.lower()
+
+    # Error HTTP 502 Bad Gateway de Google
+    if "502" in lower_err and ("that’s an error" in lower_err or "that's an error" in lower_err or "bad gateway" in lower_err or "<!doctype html>" in lower_err):
+        return (
+            "⚠️ Google Sheets API - HTTP 502 (Bad Gateway)\n"
+            "El servidor proxy de Google encontró un error temporal y no pudo procesar la solicitud.\n"
+            "Detalle: Micro-corte o saturación temporal en la red de Google Cloud.\n"
+            "Acción: El sistema reintentará automáticamente con backoff exponencial."
+        )
+
+    # Error HTTP 503 Service Unavailable
+    if "503" in lower_err and ("unavailable" in lower_err or "backend error" in lower_err or "that’s an error" in lower_err):
+        return (
+            "⚠️ Google Sheets API - HTTP 503 (Service Unavailable)\n"
+            "El servicio de Google Sheets está temporalmente sobrecargado o en mantenimiento breve.\n"
+            "Acción: El sistema reintentará en el próximo ciclo programado."
+        )
+
+    # Timeout de conexión
+    if "timed out" in lower_err or "timeout" in lower_err:
+        return (
+            "⚠️ Timeout de Conexión con Google Sheets\n"
+            "La consulta excedió el tiempo límite sin recibir respuesta del servidor.\n"
+            "Acción: Reintentando en la siguiente ventana de polling."
+        )
+
+    # Si contiene etiquetas de estilo o HTML complejo, limpiar etiquetas y conservar solo texto
+    if "<style" in lower_err or "<html" in lower_err:
+        lines = [
+            line.strip() for line in raw_err.splitlines()
+            if line.strip() and not line.strip().startswith(("{", "}", "@", "<style", "</style", "background:", "width:", "height:", "display:"))
+        ]
+        cleaned = "\n".join(lines[:12])
+        return cleaned or raw_err[:400]
+
+    return raw_err
+
+
 def notify_task_result(
     task_name: str,
     success: bool,
@@ -85,8 +132,8 @@ def notify_task_result(
 
     if not success:
         raw_err = (error_msg or output_preview or "Error no especificado").strip()
-        # Escapar HTML para evitar fallos de parseo
-        clean_err = html.escape(raw_err)
+        sanitized = clean_error_message(raw_err)
+        clean_err = html.escape(sanitized)
         if len(clean_err) > 1000:
             clean_err = clean_err[-1000:]
 

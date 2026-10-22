@@ -11,6 +11,8 @@ from sync_seguimiento_vacio import (
     is_default_or_unpainted_bg,
     get_day_column_indices,
     TARGET_COLOR_RGB,
+    CLEANUP_COLOR_RGB,
+    CLEANUP_COLOR_HEX,
     is_valid_td
 )
 
@@ -121,6 +123,8 @@ class TestSeguimientoVacio(unittest.TestCase):
         self.assertTrue(is_default_or_unpainted_bg(None))
         self.assertTrue(is_default_or_unpainted_bg({"red": 1.0, "green": 1.0, "blue": 1.0})) # Blanco
         self.assertTrue(is_default_or_unpainted_bg({"red": 0.9607843, "green": 0.9686275, "blue": 0.9803922})) # Base tabla
+        self.assertTrue(is_default_or_unpainted_bg(CLEANUP_COLOR_RGB)) # Limpieza #f5f7fa
+        self.assertEqual(CLEANUP_COLOR_HEX, "#f5f7fa")
         self.assertFalse(is_default_or_unpainted_bg({"red": 0.7, "green": 0.2, "blue": 0.2})) # Color personalizado
 
     def test_is_valid_td(self):

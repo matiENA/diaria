@@ -34,16 +34,30 @@ from typing import Dict, List, Optional, Tuple, Any
 # Prevenir caídas por timeout de sockets en Google API
 socket.setdefaulttimeout(300)
 
-def api_call_with_retry(api_req: Any, max_retries: int = 3, delay_sec: float = 5.0) -> Any:
-    """Ejecuta una petición de Google Sheets API con reintento automático y backoff ante latencia, 503 o timeout."""
+def api_call_with_retry(api_req: Any, max_retries: int = 5, initial_delay: float = 5.0) -> Any:
+    """
+    Ejecuta una petición de Google Sheets API con reintento automático y backoff exponencial
+    ante errores 500, 502 (Bad Gateway), 503, 504, caídas de gateway, socket timeouts o micro-cortes.
+    """
+    delays = [5.0, 10.0, 20.0, 30.0, 45.0]
     for attempt in range(max_retries + 1):
         try:
-            return api_req.execute(num_retries=3)
+            return api_req.execute(num_retries=2)
         except Exception as e:
             err_str = str(e).lower()
-            is_transient = any(k in err_str for k in ["timed out", "timeout", "503", "500", "502", "504", "unavailable", "internal error"])
+            status_code = getattr(getattr(e, "resp", None), "status", None)
+            is_transient = (
+                (status_code in (500, 502, 503, 504))
+                or any(k in err_str for k in [
+                    "timed out", "timeout", "503", "500", "502", "504",
+                    "unavailable", "internal error", "bad gateway",
+                    "temporarily unavailable", "that’s an error", "that's an error"
+                ])
+            )
             if attempt < max_retries and is_transient:
-                time.sleep(delay_sec * (attempt + 1))
+                wait_time = delays[attempt] if attempt < len(delays) else 30.0
+                print(f"[RETRY] ⚠️ Error transitorio de Google API ({status_code or 'Gateway/Timeout/502'}). Reintentando ({attempt + 1}/{max_retries}) en {wait_time}s...")
+                time.sleep(wait_time)
                 continue
             raise
 
@@ -80,6 +94,13 @@ TARGET_COLOR_RGB = {
     "red": 159 / 255.0,
     "green": 197 / 255.0,
     "blue": 232 / 255.0
+}
+
+CLEANUP_COLOR_HEX = "#f5f7fa"
+CLEANUP_COLOR_RGB = {
+    "red": 245 / 255.0,
+    "green": 247 / 255.0,
+    "blue": 250 / 255.0
 }
 
 EXCLUDED_DISPO_KEYWORDS = [
@@ -343,6 +364,20 @@ def is_color_9fc5e8(bg: Optional[Dict[str, float]]) -> bool:
     )
 
 
+def is_color_f5f7fa(bg: Optional[Dict[str, float]]) -> bool:
+    """Comprueba si el color coincide con el fondo base alternado #f5f7fa."""
+    if not bg or not isinstance(bg, dict):
+        return False
+    r = bg.get("red", 0.0)
+    g = bg.get("green", 0.0)
+    b = bg.get("blue", 0.0)
+    return (
+        abs(r - CLEANUP_COLOR_RGB["red"]) < 0.03
+        and abs(g - CLEANUP_COLOR_RGB["green"]) < 0.03
+        and abs(b - CLEANUP_COLOR_RGB["blue"]) < 0.03
+    )
+
+
 def is_default_or_unpainted_bg(bg: Optional[Dict[str, float]]) -> bool:
     """Verifica si la celda no tiene color manual aplicado por un operador."""
     if not bg or not isinstance(bg, dict):
@@ -353,7 +388,7 @@ def is_default_or_unpainted_bg(bg: Optional[Dict[str, float]]) -> bool:
     if r > 0.98 and g > 0.98 and b > 0.98:
         return True
     # Fondo base alternado #f5f7fa
-    if abs(r - 0.9607843) < 0.03 and abs(g - 0.9686275) < 0.03 and abs(b - 0.9803922) < 0.03:
+    if is_color_f5f7fa(bg):
         return True
     if is_color_9fc5e8(bg):
         return True
@@ -883,7 +918,7 @@ class UnifiedOperativasSync:
                         "row": r_num,
                         "col_idx": col_s1,
                         "cell_coord": cell_coord,
-                        "color": None,
+                        "color": CLEANUP_COLOR_RGB,
                         "trk": trk,
                         "reason": reason
                     })
@@ -991,7 +1026,9 @@ class UnifiedOperativasSync:
                         },
                         "rows": [{
                             "values": [{
-                                "userEnteredFormat": {}
+                                "userEnteredFormat": {
+                                    "backgroundColor": CLEANUP_COLOR_RGB
+                                }
                             }]
                         }],
                         "fields": "userEnteredFormat.backgroundColor"

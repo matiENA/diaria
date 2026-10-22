@@ -14,7 +14,10 @@ from sync_operativas_unificadas import (
     format_tracking_text,
     is_dispo_excluded,
     is_chofer_excluded,
-    is_valid_td
+    is_valid_td,
+    CLEANUP_COLOR_RGB,
+    CLEANUP_COLOR_HEX,
+    is_color_f5f7fa
 )
 
 
@@ -318,6 +321,15 @@ class TestVacioFechasYCapas(unittest.TestCase):
         last_trip = tractor_all_trips["AG538QV"][-1]
         self.assertEqual(last_trip["td"], "COD-2730951")
         self.assertFalse(last_trip["has_vacio"], "El nuevo viaje COD-2730951 no tiene vacío y debe ser el último viaje activo")
+
+    def test_cleanup_color_f5f7fa(self):
+        """Verifica que el color de limpieza sea #f5f7fa y sea reconocido correctamente."""
+        self.assertEqual(CLEANUP_COLOR_HEX, "#f5f7fa")
+        self.assertTrue(is_color_f5f7fa(CLEANUP_COLOR_RGB))
+        # Debe coincidir con los valores RGB normalizados de #f5f7fa (245, 247, 250)
+        self.assertAlmostEqual(CLEANUP_COLOR_RGB["red"], 245 / 255.0, places=4)
+        self.assertAlmostEqual(CLEANUP_COLOR_RGB["green"], 247 / 255.0, places=4)
+        self.assertAlmostEqual(CLEANUP_COLOR_RGB["blue"], 250 / 255.0, places=4)
 
 
 if __name__ == "__main__":

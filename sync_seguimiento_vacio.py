@@ -56,7 +56,12 @@ if hasattr(sys.stderr, "reconfigure") and sys.stderr is not None:
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
-from sync_operativas_unificadas import is_valid_td
+from sync_operativas_unificadas import (
+    is_valid_td,
+    api_call_with_retry,
+    CLEANUP_COLOR_HEX,
+    CLEANUP_COLOR_RGB
+)
 
 DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
 DEFAULT_MOV_ID = "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc"
@@ -202,18 +207,18 @@ class SeguimientoVacioSync:
 
     def fetch_ruteos(self) -> List[List[str]]:
         """Lee todas las filas operativas desde Ruteos (A4 hasta AL)."""
-        res = self._service.spreadsheets().values().get(
+        res = api_call_with_retry(self._service.spreadsheets().values().get(
             spreadsheetId=self.ruteos_id,
             range=f"'{SOURCE_TAB_RUTEOS}'!A4:AL",
             valueRenderOption="FORMATTED_VALUE"
-        ).execute()
+        ))
         return res.get("values", [])
 
     def get_mov_sheet_id(self) -> int:
         """Obtiene el sheetId numérico de la pestaña objetivo en Movimientos (con caché)."""
         if self._cached_sheet_id is not None:
             return self._cached_sheet_id
-        meta = self._service.spreadsheets().get(spreadsheetId=self.mov_id, fields="sheets.properties").execute()
+        meta = api_call_with_retry(self._service.spreadsheets().get(spreadsheetId=self.mov_id, fields="sheets.properties"))
         for sheet in meta.get("sheets", []):
             if sheet["properties"]["title"] == TARGET_TAB_MOV:
                 self._cached_sheet_id = sheet["properties"]["sheetId"]
@@ -233,11 +238,11 @@ class SeguimientoVacioSync:
         range_tractors = f"'{TARGET_TAB_MOV}'!E1:E350"
         range_day = f"'{TARGET_TAB_MOV}'!{col_chofer_letter}1:{col_date_letter}350"
 
-        res = self._service.spreadsheets().get(
+        res = api_call_with_retry(self._service.spreadsheets().get(
             spreadsheetId=self.mov_id,
             ranges=[range_tractors, range_day],
             fields="sheets(data(rowData(values(formattedValue,userEnteredFormat.backgroundColor))))"
-        ).execute()
+        ))
 
         sheet_data = res["sheets"][0]["data"]
         raw_tractors = sheet_data[0].get("rowData", [])
@@ -469,7 +474,7 @@ class SeguimientoVacioSync:
             }
             requests.append(req)
 
-        # 2. Limpiar celdas previamente pintadas (remover backgroundColor)
+        # 2. Limpiar celdas previamente pintadas (aplicar fondo base alternado #f5f7fa)
         for c in planned_clean:
             r_idx = c["row_num"] - 1
             c_idx = c["col_idx"]
@@ -484,7 +489,9 @@ class SeguimientoVacioSync:
                     },
                     "rows": [{
                         "values": [{
-                            "userEnteredFormat": {}
+                            "userEnteredFormat": {
+                                "backgroundColor": CLEANUP_COLOR_RGB
+                            }
                         }]
                     }],
                     "fields": "userEnteredFormat.backgroundColor"
@@ -499,10 +506,10 @@ class SeguimientoVacioSync:
         for i in range(0, len(requests), batch_size):
             chunk = requests[i:i + batch_size]
             body = {"requests": chunk}
-            self._service.spreadsheets().batchUpdate(
+            api_call_with_retry(self._service.spreadsheets().batchUpdate(
                 spreadsheetId=self.mov_id,
                 body=body
-            ).execute()
+            ))
             batches_executed += 1
 
         return {
