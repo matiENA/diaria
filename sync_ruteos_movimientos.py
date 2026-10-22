@@ -26,6 +26,7 @@ if hasattr(sys.stderr, "reconfigure"):
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
+from sync_operativas_unificadas import is_valid_td
 
 # IDs de Google Spreadsheet
 DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
@@ -230,8 +231,8 @@ class RuteosMovimientosSync:
             fecha_val = str(r[36] if len(r) > 36 else "").strip()
             localidad = str(r[37] if len(r) > 37 else "").strip()
 
-            # Fila canónica de Ruteos: debe tener tractor o UT y TD numérico (Col L / índice 11)
-            if not (trk or ut) or not (td and td.isdigit()):
+            # Fila canónica de Ruteos: debe tener tractor o UT y TD válido (Col L / índice 11)
+            if not (trk or ut) or not is_valid_td(td):
                 continue
             if not (localidad or raw_tracking):
                 continue

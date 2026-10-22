@@ -360,6 +360,25 @@ def is_default_or_unpainted_bg(bg: Optional[Dict[str, float]]) -> bool:
     return False
 
 
+def is_valid_td(val: Optional[str]) -> bool:
+    """
+    Valida si un valor de Columna L (TD) en Ruteos representa un viaje o remito activo.
+    Acepta:
+      - Números puros (TD formal definitivo, ej: '1299078', '1302956')
+      - Códigos provisionales con prefijo COD (ej: 'COD-2730951', 'COD-2733047')
+    Descarta:
+      - Encabezados de tabla ('TD')
+      - Errores y vacíos ('#N/A', '-', '', None)
+      - Textos no estructurados ('DIRECTO')
+    """
+    if not val:
+        return False
+    s = str(val).strip().upper()
+    if s in ["TD", "#N/A", "-", ""]:
+        return False
+    return bool(s.isdigit() or re.match(r"^COD[-_ ]?\d+$", s))
+
+
 # ==============================================================================
 # MOTOR OPERATIVO UNIFICADO EN CAPAS
 # ==============================================================================
@@ -604,7 +623,7 @@ class UnifiedOperativasSync:
 
             td = str(r[11] if len(r) > 11 else "").strip()
             # Omitir anotaciones operativas en hold o filas sin TD asignado
-            if not td or not td.isdigit():
+            if not td or not is_valid_td(td):
                 continue
 
             raw_vacio = str(r[23] if len(r) > 23 else "").strip()
@@ -648,7 +667,7 @@ class UnifiedOperativasSync:
             raw_vacio = str(r[23] if len(r) > 23 else "").strip()
             fecha_val = str(r[36] if len(r) > 36 else "").strip()
 
-            if not (trk or ut) or not (td and td.isdigit()):
+            if not (trk or ut) or not is_valid_td(td):
                 continue
             # Opción A: Solo tracking puro de Col H y/o Vacío de Col X (omite Col AL / Col AD)
             if not (tracking_val or raw_vacio):

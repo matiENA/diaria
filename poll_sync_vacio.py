@@ -56,7 +56,8 @@ from sync_operativas_unificadas import (
     UnifiedOperativasSync,
     get_day_column_indices,
     index_to_col_letter,
-    api_call_with_retry
+    api_call_with_retry,
+    is_valid_td
 )
 from execution_shield import ExecutionShield, ShieldBlockedException, generate_audit_report
 
@@ -159,11 +160,11 @@ class VacioPoller:
             if val and val != "#N/A":
                 vacio_items.append({"row": idx + 4, "val": val})
 
-        # Muestra de los últimos 150 TDs numéricos en Ruteos para detectar nuevas filas operativas
+        # Muestra de los últimos 150 TDs en Ruteos para detectar nuevas filas operativas
         td_tail = []
         for idx, row in enumerate(raw_tds[-150:], start=max(4, len(raw_tds) - 146)):
             val = row[0].strip() if row and row[0] else ""
-            if val and val.isdigit():
+            if val and is_valid_td(val):
                 td_tail.append({"row": idx, "td": val})
 
         # Matriz simplificada del día en Movimientos

@@ -10,7 +10,8 @@ from sync_seguimiento_vacio import (
     is_color_9fc5e8,
     is_default_or_unpainted_bg,
     get_day_column_indices,
-    TARGET_COLOR_RGB
+    TARGET_COLOR_RGB,
+    is_valid_td
 )
 
 class TestSeguimientoVacio(unittest.TestCase):
@@ -122,6 +123,17 @@ class TestSeguimientoVacio(unittest.TestCase):
         self.assertTrue(is_default_or_unpainted_bg({"red": 0.9607843, "green": 0.9686275, "blue": 0.9803922})) # Base tabla
         self.assertFalse(is_default_or_unpainted_bg({"red": 0.7, "green": 0.2, "blue": 0.2})) # Color personalizado
 
+    def test_is_valid_td(self):
+        """Verifica que TDs provisionales COD-XXXX sean válidos y los no operativos se descarten."""
+        self.assertTrue(is_valid_td("1299078"))
+        self.assertTrue(is_valid_td("COD-2730951"))
+        self.assertTrue(is_valid_td("cod-2730951"))
+        self.assertFalse(is_valid_td("TD"))
+        self.assertFalse(is_valid_td("#N/A"))
+        self.assertFalse(is_valid_td("DIRECTO"))
+        self.assertFalse(is_valid_td(""))
+
 
 if __name__ == "__main__":
     unittest.main()
+

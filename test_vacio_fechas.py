@@ -13,7 +13,8 @@ from sync_operativas_unificadas import (
     clean_destino,
     format_tracking_text,
     is_dispo_excluded,
-    is_chofer_excluded
+    is_chofer_excluded,
+    is_valid_td
 )
 
 
@@ -261,6 +262,62 @@ class TestVacioFechasYCapas(unittest.TestCase):
         self.assertEqual(no_vacio, "• NEUQUEN\n13:03 llegando")
         no_bullets = strip_bullets(no_vacio)
         self.assertEqual(no_bullets, "13:03 llegando")
+
+    def test_is_valid_td(self):
+        """Verifica la validación de TDs estándar, provisionales (COD-XXXX) y el descarte de inválidos."""
+        # Válidos estándar
+        self.assertTrue(is_valid_td("1299078"))
+        self.assertTrue(is_valid_td("1310272"))
+        self.assertTrue(is_valid_td("9409"))
+        self.assertTrue(is_valid_td(123456))
+
+        # Válidos provisionales
+        self.assertTrue(is_valid_td("COD-2730951"))
+        self.assertTrue(is_valid_td("COD-2733047"))
+        self.assertTrue(is_valid_td("cod-2730951"))
+        self.assertTrue(is_valid_td("COD_12345"))
+        self.assertTrue(is_valid_td("COD 99999"))
+
+        # Inválidos
+        self.assertFalse(is_valid_td("TD"))
+        self.assertFalse(is_valid_td("#N/A"))
+        self.assertFalse(is_valid_td("DIRECTO"))
+        self.assertFalse(is_valid_td("D157-D159"))
+        self.assertFalse(is_valid_td("-"))
+        self.assertFalse(is_valid_td(""))
+        self.assertFalse(is_valid_td(None))
+        self.assertFalse(is_valid_td("ABC-123"))
+
+    def test_provisional_td_overrides_vacio_seguimiento(self):
+        """
+        Simula la unidad 335 (AG538QV):
+        - Viaje previo: TD 1310272 con VACÍO
+        - Nuevo viaje: TD provisional COD-2730951 sin VACÍO
+        Verifica que el último viaje activo sea COD-2730951 y por ende NO califique para #9fc5e8.
+        """
+        mock_ruteos = [
+            # Viaje anterior con Vacío
+            ["AG538QV"] + ["335"] + [""] * 9 + ["1310272"] + [""] * 11 + ["20/10/2026 10:00"],
+            # Nuevo viaje con TD provisional COD-2730951 (sin vacío)
+            ["AG538QV"] + ["335"] + [""] * 9 + ["COD-2730951"] + [""] * 11 + [""]
+        ]
+
+        tractor_all_trips = {}
+        for r in mock_ruteos:
+            trk = r[0]
+            td = str(r[11]).strip()
+            if not is_valid_td(td):
+                continue
+            vac = format_vacio_datetime(r[23])
+            if trk not in tractor_all_trips:
+                tractor_all_trips[trk] = []
+            tractor_all_trips[trk].append({"td": td, "has_vacio": bool(vac), "vacio_header": vac})
+
+        self.assertIn("AG538QV", tractor_all_trips)
+        self.assertEqual(len(tractor_all_trips["AG538QV"]), 2)
+        last_trip = tractor_all_trips["AG538QV"][-1]
+        self.assertEqual(last_trip["td"], "COD-2730951")
+        self.assertFalse(last_trip["has_vacio"], "El nuevo viaje COD-2730951 no tiene vacío y debe ser el último viaje activo")
 
 
 if __name__ == "__main__":

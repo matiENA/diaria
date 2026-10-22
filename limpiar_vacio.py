@@ -38,6 +38,7 @@ from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
 
 from config_operativas import load_config
+from sync_operativas_unificadas import is_valid_td
 from sync_operativas_unificadas import format_vacio_datetime
 
 _cfg = load_config()
@@ -146,8 +147,8 @@ class VacioCleaner:
             raw_vacio = str(r[23] if len(r) > 23 else "").strip()
             fecha_val = str(r[36] if len(r) > 36 else "").strip()
 
-            # Fila canónica: debe tener TD numérico y tractor/UT
-            if not (trk or ut) or not (td and td.isdigit()):
+            # Fila canónica: debe tener TD válido y tractor/UT
+            if not (trk or ut) or not is_valid_td(td):
                 continue
 
             vacio_fmt = format_vacio_datetime(raw_vacio)

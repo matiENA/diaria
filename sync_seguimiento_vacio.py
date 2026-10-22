@@ -56,6 +56,7 @@ if hasattr(sys.stderr, "reconfigure") and sys.stderr is not None:
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from credentials_helper import get_google_credentials, resolve_credentials_file
+from sync_operativas_unificadas import is_valid_td
 
 DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
 DEFAULT_MOV_ID = "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc"
@@ -307,7 +308,7 @@ class SeguimientoVacioSync:
 
             td = str(r[11] if len(r) > 11 else "").strip()
             # Omitir anotaciones operativas en hold o filas sin TD asignado
-            if not td or not td.isdigit():
+            if not is_valid_td(td):
                 continue
 
             raw_vacio = str(r[23] if len(r) > 23 else "").strip()
