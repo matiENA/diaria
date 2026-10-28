@@ -22,6 +22,8 @@ from config import (
     DEFAULT_SPREADSHEET_ID,
     SEGURIDAD_VIAL_SPREADSHEET_ID,
     CONF_SPREADSHEET_ID,
+    CONF_SOURCE_SHEET_NAME,
+    CONF_TARGET_SHEET_NAME,
     SERVICE_ACCOUNT_FILE,
     DEFAULT_SYNC_INTERVAL_SECONDS
 )
@@ -63,26 +65,29 @@ def run_once(manager: SyncManager, write_to_sheet: bool = True):
 def run_once_conf_viaje(manager: SyncManager, write_to_sheet: bool = True):
     print("=" * 70)
     print("  INICIANDO SINCRONIZACION UTE Cordillera -> CONF. DE VIAJE")
-    print("  Criterio: Columna W ('sujeto a seguimiento') agrupado por TD (Col I)")
-    print(f"  Planilla ID: {manager.spreadsheet_id}")
-    print(f"  Fecha/Hora:  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("  Criterio: Columna F con símbolo ⚠️ agrupado por TD (Col I)")
+    print(f"  Planilla ID:     {manager.spreadsheet_id}")
+    print(f"  Pestaña Origen:  {CONF_SOURCE_SHEET_NAME}")
+    print(f"  Pestaña Destino: {CONF_TARGET_SHEET_NAME}")
+    print(f"  Fecha/Hora:      {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
 
     try:
         report = manager.run_sync_conf_viaje(write_to_sheet=write_to_sheet)
         summary = report["summary"]
 
-        print("\n[OK] Sincronización de CONF. DE VIAJE completada con éxito.")
-        print(f"     - Filas escaneadas en UTE Cordillera: {summary['total_rows_scanned']}")
-        print(f"     - Total de viajes (TD) vistos:       {summary['total_trips_detected']}")
-        print(f"     - Viajes 'sujeto a seguimiento':     {summary['matching_trips_count']}")
-        print(f"     - Filas escritas en CONF. DE VIAJE:  {summary['matching_rows_count']}")
-        print(f"     - TD(s) seleccionados:               {', '.join(summary['matching_tds'])}")
-        print(f"     - Tiempo transcurrido:               {report['elapsed_seconds']} s")
+        print(f"\n[OK] Sincronización de {CONF_TARGET_SHEET_NAME} completada con éxito.")
+        print(f"     - Filas escaneadas en {CONF_SOURCE_SHEET_NAME}: {summary['total_rows_scanned']}")
+        print(f"     - Total de viajes (TD) vistos:                 {summary['total_trips_detected']}")
+        print(f"     - Viajes con Alerta ⚠️ (Col F):                {summary['matching_trips_count']}")
+        print(f"     - Filas escritas en {CONF_TARGET_SHEET_NAME}:  {summary['matching_rows_count']}")
+        print(f"     - TD(s) seleccionados:                         {', '.join(summary['matching_tds'])}")
+        print(f"     - Tiempo transcurrido:                         {report['elapsed_seconds']} s")
 
-        if report["trips_seguimiento"]:
-            print("\n--- Desglose de Viajes Copiados a CONF. DE VIAJE (desde fila 5) ---")
-            for t in report["trips_seguimiento"]:
+        trips_list = report.get("trips_alerta") or report.get("trips_seguimiento") or []
+        if trips_list:
+            print(f"\n--- Desglose de Viajes Copiados a {CONF_TARGET_SHEET_NAME} (desde fila 5) ---")
+            for t in trips_list:
                 print(f"  * TD {t['td']} | Trk: {t['tractor']} | Chf: {t['chofer']} | Filas: {t['total_filas']}")
                 print(f"    Terminal: {t['terminal']} | Fecha: {t['fecha_planificada']}")
                 print(f"    Paradas: {', '.join(t['localidades'])}")
@@ -153,7 +158,7 @@ def main():
     parser.add_argument(
         "--conf-viaje",
         action="store_true",
-        help="Ejecuta sincronización de UTE Cordillera hacia CONF. DE VIAJE (Sujeto a seguimiento)"
+        help=f"Ejecuta sincronización de {CONF_SOURCE_SHEET_NAME} hacia {CONF_TARGET_SHEET_NAME} (Filtro ⚠️ en Col F)"
     )
     parser.add_argument(
         "--seguridad-vial",

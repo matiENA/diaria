@@ -130,7 +130,7 @@ Si el Gatekeeper detecta novedades (o se pasa `--force`):
 | **3** | **Seguimiento Vacío (#9fc5e8)** | `sync_seguimiento_vacio.py` | Standalone / CLI | Módulo individual de evaluación de último TD, exclusiones Dispo y pintado celeste. |
 | **4** | **Disponibilidad VTV** | `pintarDisponibilidad.js` | Cron diario **06:00 AM** | Evalúa vencimientos de VTV/Ruta de tractores y semirremolques en 33 columnas de `Dispo.`. |
 | **5** | **Viajes Cordillera** | `main.py --seguridad-vial` | Cron **cada 10 min** | Filtra viajes con destinos cordilleranos e inserta los 22 campos en la pestaña `SEGURIDA VIAL`. |
-| **6** | **CONF. DE VIAJE** | `main.py --conf-viaje` | Cron **cada 10 min** | Monitorea despachos 'sujeto a seguimiento' y los vuelca en `CONF. DE VIAJE`. |
+| **6** | **CONF. DE VIAJE** | `main.py --conf-viaje` | Cron **cada 10 min** | Monitorea despachos con alerta ⚠️ en Col F (Marca Temp - Respuesta) y los vuelca en `CONF. DE VIAJE OCTUBRE 26`. |
 | **7** | **Limpieza VACÍO (Reset)** | `limpiar_vacio.py` | Manual / Exclusivo | Herramienta administrativa para revertir notas de vacío y bordes ante correcciones. |
 
 ---

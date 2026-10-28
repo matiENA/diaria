@@ -2,11 +2,11 @@
 Servicio de filtrado y mapeo de UTE Cordillera hacia CONF. DE VIAJE.
 
 Regla de negocio:
-- Clave de control: Columna V ('sujeto a seguimiento').
-- Todo el viaje repite número de TD en la Columna I.
-- Si alguna fila de un TD contiene 'sujeto a seguimiento' en la Columna V,
+- Clave de control: Columna F ('Marca Temp - Respuesta') con símbolo ⚠️.
+- Todo el viaje agrupa por número de TD en la Columna I.
+- Si alguna fila de un TD contiene '⚠️' en la Columna F,
   se transfiere el VIAJE COMPLETO (todas las filas con ese mismo TD).
-- Los registros se mapean a 8 columnas específicas (A a H) y se escriben
+- Los registros se mapean a 10 columnas específicas (A a J) y se escriben
   a partir de la fila 5 de CONF. DE VIAJE.
 """
 import re
@@ -15,7 +15,7 @@ from config import (
     CONF_COLUMN_INDICES,
     CONF_COLUMN_MAPPINGS,
     CONF_FILTER_KEY_INDEX,
-    CONF_FILTER_VALUE,
+    CONF_FILTER_SYMBOL,
     CONF_TRIP_ID_INDEX
 )
 
@@ -37,22 +37,23 @@ def clean_client_name(text: str) -> str:
 class ConfViajeService:
     def __init__(
         self,
-        filter_value: str = CONF_FILTER_VALUE,
+        filter_symbol: str = CONF_FILTER_SYMBOL,
         filter_col_idx: int = CONF_FILTER_KEY_INDEX,
         trip_id_col_idx: int = CONF_TRIP_ID_INDEX,
         column_indices: list = CONF_COLUMN_INDICES
     ):
-        self.filter_value = filter_value.strip().lower()
+        self.filter_symbol = filter_symbol
         self.filter_col_idx = filter_col_idx
         self.trip_id_col_idx = trip_id_col_idx
         self.column_indices = column_indices
         self.headers = [item[2] for item in CONF_COLUMN_MAPPINGS]
 
     def is_match_cell(self, cell_value: str) -> bool:
-        """Verifica si el contenido de la celda contiene la clave buscada."""
+        """Verifica si el contenido de la celda contiene el símbolo de alerta ⚠️ o ⚠."""
         if not cell_value:
             return False
-        return self.filter_value in str(cell_value).strip().lower()
+        val = str(cell_value)
+        return "⚠️" in val or "\u26a0" in val
 
     def map_row(self, row: List[str]) -> List[str]:
         """
@@ -79,9 +80,9 @@ class ConfViajeService:
     def process_rows(self, raw_rows: List[List[str]]) -> Dict[str, Any]:
         """
         Procesa las filas brutas de UTE Cordillera.
-        1. Identifica qué TDs tienen al menos una fila con 'sujeto a seguimiento' en Col V.
+        1. Identifica qué TDs tienen al menos una fila con el símbolo ⚠️ en Col F.
         2. Agrupa y extrae todas las filas de los viajes identificados.
-        3. Realiza la transformación y mapeo a las columnas A-H.
+        3. Realiza la transformación y mapeo a las 10 columnas destino.
         """
         if not raw_rows:
             return {
@@ -93,6 +94,7 @@ class ConfViajeService:
                     "non_matching_trips_count": 0,
                     "matching_tds": []
                 },
+                "trips_alerta": [],
                 "trips_seguimiento": [],
                 "trips_otros": [],
                 "rows_to_write": [],
@@ -105,7 +107,7 @@ class ConfViajeService:
         if first_row_val in ["TD", "Nº DE DESPACHO", "N° DE DESPACHO", "DESPACHO"]:
             start_row_idx = 1
 
-        # 1. Agrupar filas por TD en orden de aparición y detectar cuáles tienen 'sujeto a seguimiento'
+        # 1. Agrupar filas por TD en orden de aparición y detectar cuáles tienen el símbolo ⚠️ en Col F
         td_order: List[str] = []
         td_groups: Dict[str, List[tuple]] = {}
         matching_tds: Set[str] = set()
@@ -122,18 +124,16 @@ class ConfViajeService:
                 td_groups[td_val] = []
                 td_order.append(td_val)
 
-            # Verificar si esta fila tiene el criterio clave en Col W (o Col V como respaldo)
-            col_key_val = row[self.filter_col_idx].strip() if len(row) > self.filter_col_idx else ""
-            col_v_val = row[21].strip() if len(row) > 21 else ""
-            has_match = self.is_match_cell(col_key_val) or self.is_match_cell(col_v_val)
-            matched_note = col_key_val if self.is_match_cell(col_key_val) else col_v_val
+            # Verificar si esta fila tiene el símbolo ⚠️ en Col F
+            col_f_val = row[self.filter_col_idx].strip() if len(row) > self.filter_col_idx else ""
+            has_match = self.is_match_cell(col_f_val)
             if has_match:
                 matching_tds.add(td_val)
 
-            td_groups[td_val].append((row_idx, row, matched_note, has_match))
+            td_groups[td_val].append((row_idx, row, col_f_val, has_match))
 
-        # 2. Separar viajes en seguimiento vs otros y mapear columnas
-        trips_seguimiento = []
+        # 2. Separar viajes con alerta vs otros y mapear columnas
+        trips_alerta = []
         trips_otros = []
         rows_to_write = []
 
@@ -148,7 +148,7 @@ class ConfViajeService:
             localidades = []
             matched_notes = []
 
-            for row_idx, row, col_v, has_match in group:
+            for row_idx, row, col_f, has_match in group:
                 r_tractor = row[0].strip() if len(row) > 0 else ""
                 r_chofer = row[3].strip() if len(row) > 3 else ""
                 r_terminal = row[6].strip() if len(row) > 6 else ""
@@ -165,19 +165,19 @@ class ConfViajeService:
                     fecha = r_fecha
                 if r_loc and r_loc not in localidades:
                     localidades.append(r_loc)
-                if has_match and col_v:
-                    matched_notes.append(f"Fila {row_idx}: '{col_v}'")
+                if has_match and col_f:
+                    matched_notes.append(f"Fila {row_idx}: '{col_f}'")
 
-            is_trip_seguimiento = td in matching_tds
+            is_trip_match = td in matching_tds
 
-            if is_trip_seguimiento:
+            if is_trip_match:
                 mapped_trip_rows = []
                 for row_idx, row, _, _ in group:
                     mapped_row = self.map_row(row)
                     mapped_trip_rows.append(mapped_row)
                     rows_to_write.append(mapped_row)
 
-                trips_seguimiento.append({
+                trip_obj = {
                     "td": td,
                     "tractor": tractor,
                     "chofer": chofer,
@@ -185,9 +185,10 @@ class ConfViajeService:
                     "fecha_planificada": fecha,
                     "localidades": localidades,
                     "total_filas": len(group),
-                    "motivos_seguimiento": matched_notes,
+                    "motivos_alerta": matched_notes,
                     "filas_mapeadas": mapped_trip_rows
-                })
+                }
+                trips_alerta.append(trip_obj)
             else:
                 trips_otros.append({
                     "td": td,
@@ -202,7 +203,7 @@ class ConfViajeService:
         summary = {
             "total_rows_scanned": len(raw_rows),
             "total_trips_detected": len(td_order),
-            "matching_trips_count": len(trips_seguimiento),
+            "matching_trips_count": len(trips_alerta),
             "matching_rows_count": len(rows_to_write),
             "non_matching_trips_count": len(trips_otros),
             "matching_tds": sorted(list(matching_tds))
@@ -210,7 +211,8 @@ class ConfViajeService:
 
         return {
             "summary": summary,
-            "trips_seguimiento": trips_seguimiento,
+            "trips_alerta": trips_alerta,
+            "trips_seguimiento": trips_alerta,  # Alias retrocompatible
             "trips_otros": trips_otros,
             "rows_to_write": rows_to_write,
             "headers": self.headers

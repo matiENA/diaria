@@ -30,14 +30,20 @@ FALLBACK_CONFIG = {
         "ruteos_id": "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o",
         "tab_ruteos": "Ruteos",
         "movimientos_id": "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc",
-        "tab_movimientos": "OCTUBRE 2026- Mov.Unidades y Choferes"
+        "tab_movimientos": "OCTUBRE 2026- Mov.Unidades y Choferes",
+        "conf_viaje_id": "1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU",
+        "tab_conf_source": "UTE Cordillera Octubre 26",
+        "tab_conf_target": "CONF. DE VIAJE OCTUBRE 26"
     },
     "mes_anterior": {
         "nombre": "Septiembre 2026",
         "ruteos_id": "1H-UoO3VmwNH7YMnvycKfZTyPbYcwpJNjbEKqU7MZKmM",
         "tab_ruteos": "Liviano",
         "movimientos_id": "1Bwj8WCykMn_FbZhQ_FqnDH3K_WCod52YTSvsaxIDNS8",
-        "tab_movimientos": "SEPTIEMBRE 2026- Mov.Unidades y Choferes"
+        "tab_movimientos": "SEPTIEMBRE 2026- Mov.Unidades y Choferes",
+        "conf_viaje_id": "1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU",
+        "tab_conf_source": "UTE Cordillera",
+        "tab_conf_target": "CONF. DE VIAJE"
     },
     "dias_transicion_lectura_dual": 7
 }
@@ -72,6 +78,12 @@ def load_config() -> Dict[str, Any]:
         config["mes_actual"]["movimientos_id"] = os.getenv("MOVIMIENTOS_ID").strip()
     if os.getenv("TAB_MOVIMIENTOS"):
         config["mes_actual"]["tab_movimientos"] = os.getenv("TAB_MOVIMIENTOS").strip()
+    if os.getenv("CONF_SPREADSHEET_ID") or os.getenv("CONF_VIAJE_ID"):
+        config["mes_actual"]["conf_viaje_id"] = (os.getenv("CONF_SPREADSHEET_ID") or os.getenv("CONF_VIAJE_ID")).strip()
+    if os.getenv("CONF_SOURCE_SHEET_NAME") or os.getenv("CONF_SOURCE_TAB"):
+        config["mes_actual"]["tab_conf_source"] = (os.getenv("CONF_SOURCE_SHEET_NAME") or os.getenv("CONF_SOURCE_TAB")).strip()
+    if os.getenv("CONF_TARGET_SHEET_NAME") or os.getenv("CONF_TARGET_TAB"):
+        config["mes_actual"]["tab_conf_target"] = (os.getenv("CONF_TARGET_SHEET_NAME") or os.getenv("CONF_TARGET_TAB")).strip()
 
     # Mes anterior
     if os.getenv("RUTEOS_ANTERIOR_ID"):
@@ -82,6 +94,12 @@ def load_config() -> Dict[str, Any]:
         config["mes_anterior"]["movimientos_id"] = os.getenv("MOVIMIENTOS_ANTERIOR_ID").strip()
     if os.getenv("TAB_MOVIMIENTOS_ANTERIOR"):
         config["mes_anterior"]["tab_movimientos"] = os.getenv("TAB_MOVIMIENTOS_ANTERIOR").strip()
+    if os.getenv("CONF_ANTERIOR_ID"):
+        config["mes_anterior"]["conf_viaje_id"] = os.getenv("CONF_ANTERIOR_ID").strip()
+    if os.getenv("TAB_CONF_SOURCE_ANTERIOR"):
+        config["mes_anterior"]["tab_conf_source"] = os.getenv("TAB_CONF_SOURCE_ANTERIOR").strip()
+    if os.getenv("TAB_CONF_TARGET_ANTERIOR"):
+        config["mes_anterior"]["tab_conf_target"] = os.getenv("TAB_CONF_TARGET_ANTERIOR").strip()
 
     # Días de transición
     if os.getenv("DIAS_TRANSICION_DUAL"):

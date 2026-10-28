@@ -136,8 +136,8 @@ class SyncManager:
         """
         Ejecuta el ciclo de sincronización para CONF. DE VIAJE:
         1. Lee los datos vigentes de UTE Cordillera de la planilla correspondiente.
-        2. Procesa y filtra los viajes con 'sujeto a seguimiento' en Col V agrupados por TD (Col I).
-        3. Si write_to_sheet es True, escribe en CONF. DE VIAJE a partir de la fila 5 (Cols A a H).
+        2. Procesa y filtra los viajes con símbolo '⚠️' en Col F agrupados por TD (Col I).
+        3. Si write_to_sheet es True, escribe en CONF. DE VIAJE a partir de la fila 5 (Cols A a J).
         4. Guarda el reporte en last_sync_conf_viaje.json.
         """
         target_id = spreadsheet_id or self.conf_spreadsheet_id
@@ -168,7 +168,8 @@ class SyncManager:
                 "elapsed_seconds": elapsed_seconds,
                 "spreadsheet_id": target_id,
                 "summary": processed["summary"],
-                "trips_seguimiento": processed["trips_seguimiento"],
+                "trips_alerta": processed.get("trips_alerta", []),
+                "trips_seguimiento": processed.get("trips_seguimiento", []),
                 "trips_otros": processed["trips_otros"],
                 "rows_written_count": len(processed["rows_to_write"]),
                 "headers": processed["headers"],

@@ -8,6 +8,13 @@ from pathlib import Path
 # Directorio raíz del proyecto
 BASE_DIR = Path(__file__).resolve().parent
 
+try:
+    from config_operativas import load_config
+    _operativas_cfg = load_config()
+    _mes_act = _operativas_cfg.get("mes_actual", {})
+except Exception:
+    _mes_act = {}
+
 # Búsqueda inteligente del archivo de credenciales de Google Service Account
 def resolve_credentials_file() -> str:
     # 1. Variable de entorno explícita
@@ -41,12 +48,12 @@ SERVICE_ACCOUNT_FILE = resolve_credentials_file()
 # IDs de Google Spreadsheet según el módulo correspondiente
 SEGURIDAD_VIAL_SPREADSHEET_ID = os.getenv(
     "SEGURIDAD_VIAL_SPREADSHEET_ID",
-    "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
+    _mes_act.get("ruteos_id", "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o")
 )
 
 CONF_SPREADSHEET_ID = os.getenv(
     "CONF_SPREADSHEET_ID",
-    os.getenv("SPREADSHEET_ID", "1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU")
+    os.getenv("SPREADSHEET_ID", _mes_act.get("conf_viaje_id", "1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU"))
 )
 
 # ID del Google Spreadsheet principal por compatibilidad histórica
@@ -59,8 +66,8 @@ DRIVE_ROOT_FOLDER_ID = os.getenv(
 )
 
 # Nombres de las pestañas
-SOURCE_SHEET_NAME = "Ruteos"
-TARGET_SHEET_NAME = "SEGURIDA VIAL"
+SOURCE_SHEET_NAME = os.getenv("SOURCE_SHEET_NAME", _mes_act.get("tab_ruteos", "Ruteos"))
+TARGET_SHEET_NAME = os.getenv("TARGET_SHEET_NAME", "SEGURIDA VIAL")
 
 # Columnas declaradas a extraer (en orden específico requerido por el usuario)
 TARGET_COLUMNS_LETTERS = [
@@ -158,14 +165,20 @@ STATE_FILE = BASE_DIR / "last_sync_result.json"
 DEFAULT_SYNC_INTERVAL_SECONDS = 300  # 5 minutos
 
 # ==============================================================================
-# CONFIGURACIÓN ESPECÍFICA: UTE Cordillera ➡️ CONF. DE VIAJE (Sujeto a Seguimiento)
+# CONFIGURACIÓN ESPECÍFICA: UTE Cordillera ➡️ CONF. DE VIAJE (Alerta ⚠️)
 # ==============================================================================
-CONF_SOURCE_SHEET_NAME = "UTE Cordillera"
-CONF_TARGET_SHEET_NAME = "CONF. DE VIAJE"
+CONF_SOURCE_SHEET_NAME = os.getenv(
+    "CONF_SOURCE_SHEET_NAME",
+    os.getenv("CONF_SOURCE_TAB", _mes_act.get("tab_conf_source", "UTE Cordillera Octubre 26"))
+)
+CONF_TARGET_SHEET_NAME = os.getenv(
+    "CONF_TARGET_SHEET_NAME",
+    os.getenv("CONF_TARGET_TAB", _mes_act.get("tab_conf_target", "CONF. DE VIAJE OCTUBRE 26"))
+)
 CONF_START_ROW = 5  # Los datos se escriben a partir de la fila 5
 
 # Mapeo de columnas: (Columna Origen en UTE Cordillera, Columna Destino en CONF. DE VIAJE, Título Semántico)
-# t -> a, d -> b, i -> c, a -> d, g -> e, u -> f, n -> g (limpiado), q -> h, k -> i, L -> j
+# T -> A, D -> B, I -> C, A -> D, G -> E, U -> F, N -> G (limpiado), Q -> H, K -> I, L -> J
 CONF_COLUMN_MAPPINGS = [
     ("T", "A", "FECHA PLANIFICADA"),
     ("D", "B", "Chofer"),
@@ -185,10 +198,10 @@ CONF_COLUMN_INDICES = [
     for src, dst, label in CONF_COLUMN_MAPPINGS
 ]
 
-# Clave de filtrado (Col W) y valor buscado
-CONF_FILTER_KEY_COL = "W"
-CONF_FILTER_KEY_INDEX = col_letter_to_index(CONF_FILTER_KEY_COL)  # 22 (Col W)
-CONF_FILTER_VALUE = "sujeto a seguimiento"
+# Clave de filtrado (Col F) y símbolo buscado
+CONF_FILTER_KEY_COL = "F"
+CONF_FILTER_KEY_INDEX = col_letter_to_index(CONF_FILTER_KEY_COL)  # 5 (Col F: Marca Temp - Respuesta)
+CONF_FILTER_SYMBOL = "⚠️"
 
 # Columna índice de agrupación por viaje (Col I = TD)
 CONF_TRIP_ID_COL = "I"

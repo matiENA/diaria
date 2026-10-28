@@ -283,7 +283,7 @@ def root_dashboard():
                 <li>VACÍO (Col X) — Cada 20 min</li>
                 <li>Seguimiento Vacío — Cada 15 min</li>
                 <li>Viajes Cordillera — Cada 10 min</li>
-                <li>Confirmación de Viaje — Cada 10 min</li>
+                <li>CONF. DE VIAJE (Filtro ⚠️ Col F) — Cada 10 min</li>
                 <li>Disponibilidad VTV — Diario 06:00 AM</li>
             </ul>
         </div>

@@ -174,12 +174,13 @@ class GoogleSheetsClient:
             "total_data_rows": len(data_rows)
         }
 
-    def read_ute_cordillera_rows(self, range_name: str = None) -> List[List[str]]:
+    def read_ute_cordillera_rows(self, range_name: str = None, source_sheet: str = None) -> List[List[str]]:
         """
-        Lee los datos de la pestaña de origen (UTE Cordillera) hasta la columna W / Z inclusive.
+        Lee los datos de la pestaña de origen (UTE Cordillera) hasta la columna Z inclusive.
         """
+        sheet = source_sheet or CONF_SOURCE_SHEET_NAME
         if range_name is None:
-            range_name = f"'{CONF_SOURCE_SHEET_NAME}'!A1:Z"
+            range_name = f"'{sheet}'!A1:Z"
         result = self._service.spreadsheets().values().get(
             spreadsheetId=self.spreadsheet_id,
             range=range_name,
@@ -191,7 +192,7 @@ class GoogleSheetsClient:
         self,
         data_rows: List[List[str]],
         start_row: int = CONF_START_ROW,
-        target_sheet: str = CONF_TARGET_SHEET_NAME
+        target_sheet: str = None
     ) -> Dict[str, Any]:
         """
         Escribe los registros filtrados en CONF. DE VIAJE a partir de la fila especificada (fila 5).
@@ -199,10 +200,11 @@ class GoogleSheetsClient:
           filas superiores de títulos (1 a 4) y columnas adicionales como K y L (Auditorías).
         - Escribe los datos en A5:J...
         """
-        self.ensure_target_sheet_exists(target_sheet)
+        dest_sheet = target_sheet or CONF_TARGET_SHEET_NAME
+        self.ensure_target_sheet_exists(dest_sheet)
 
         # 1. Limpiar rango anterior de datos en columnas A a J desde fila start_row
-        clear_range = f"'{target_sheet}'!A{start_row}:J"
+        clear_range = f"'{dest_sheet}'!A{start_row}:J"
         self._service.spreadsheets().values().clear(
             spreadsheetId=self.spreadsheet_id,
             range=clear_range
@@ -218,7 +220,7 @@ class GoogleSheetsClient:
             }
 
         # 2. Escribir datos a partir de la fila start_row
-        write_range = f"'{target_sheet}'!A{start_row}"
+        write_range = f"'{dest_sheet}'!A{start_row}"
         body = {
             "values": data_rows
         }

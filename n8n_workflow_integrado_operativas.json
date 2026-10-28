@@ -83,7 +83,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_ruteos_movimientos.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 sync_ruteos_movimientos.py --apply\""
       },
       "id": "9ae3cd65-d7d9-4580-b316-65b60f033e0c",
       "name": "Ejecutar Sync Tracking (Col H)",
@@ -146,7 +146,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_vacio.py --apply --borders\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 sync_vacio.py --apply --borders\""
       },
       "id": "bf838ca9-8806-4275-83ad-17b7c99ccd50",
       "name": "Ejecutar Sync VACIO (Col X)",
@@ -209,7 +209,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 sync_seguimiento_vacio.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 sync_seguimiento_vacio.py --apply\""
       },
       "id": "b52138fe-a60e-45fa-a24a-210fc520fbcf",
       "name": "Ejecutar Sync Seguimiento Vacío",
@@ -271,7 +271,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && node pintarDisponibilidad.js\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && node pintarDisponibilidad.js\""
       },
       "id": "1137b771-0746-4c99-8768-1233b590047b",
       "name": "Ejecutar Pintado de Disponibilidad",
@@ -297,7 +297,7 @@
     },
     {
       "parameters": {
-        "content": "## 🏔️ TAREA 5: VIAJES CORDILLERA ➡️ SEGURIDA VIAL\n- **Origen:** Ruteos (`1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o`).\n- **Destino:** Pestaña `SEGURIDA VIAL` (Columnas contiguas A:V).\n- **Regla:** Viaje completo por TD (Col L) si al menos una parada tiene destino a Cordillera (21 localidades declaradas). Sincroniza 22 columnas ordenadas.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 main.py --seguridad-vial`",
+        "content": "## 🏔️ TAREA 5: VIAJES CORDILLERA ➡️ SEGURIDA VIAL\n- **Origen:** Ruteos (`1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o`).\n- **Destino:** Pestaña `SEGURIDA VIAL` (Columnas contiguas A:V).\n- **Regla:** Viaje completo por TD (Col L) si al menos una parada tiene destino a Cordillera (21 localidades declaradas). Sincroniza 22 columnas ordenadas.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias`\n- **Comando:** `py -3.13 main.py --seguridad-vial`",
         "height": 340,
         "width": 1350
       },
@@ -332,7 +332,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 main.py --seguridad-vial\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 main.py --seguridad-vial\""
       },
       "id": "e976d847-f690-42a7-9fe1-46b3d665af38",
       "name": "Ejecutar Sync Viajes Cordillera",
@@ -358,7 +358,7 @@
     },
     {
       "parameters": {
-        "content": "## 📋 TAREA 6: UTE CORDILLERA ➡️ CONF. DE VIAJE\n- **Origen:** Pestaña `UTE Cordillera` (`1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU`).\n- **Destino:** Pestaña `CONF. DE VIAJE` (desde fila 5).\n- **Regla:** Viaje completo por TD (Col I) si contiene 'sujeto a seguimiento' en Col W/V. Escribe 10 columnas limpias con cliente formateado.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 main.py --conf-viaje`",
+        "content": "## 📋 TAREA 6: UTE CORDILLERA ➡️ CONF. DE VIAJE\n- **Origen:** Pestaña `UTE Cordillera Octubre 26` (`1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU`).\n- **Destino:** Pestaña `CONF. DE VIAJE OCTUBRE 26` (desde fila 5, Cols A:J).\n- **Regla:** Viaje completo por TD (Col I) si contiene símbolo ⚠️ en Columna F (Marca Temp - Respuesta). Escribe 10 columnas limpias con cliente formateado.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias`\n- **Comando:** `py -3.13 main.py --conf-viaje`",
         "height": 340,
         "width": 1350,
         "color": 6
@@ -394,7 +394,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 main.py --conf-viaje\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 main.py --conf-viaje\""
       },
       "id": "23b1ec3a-79b0-4696-a855-74d99ebc06e9",
       "name": "Ejecutar Sync CONF. DE VIAJE",
@@ -407,7 +407,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización UTE Cordillera ➡️ CONF. DE VIAJE\",\n    origen: \"UTE Cordillera\",\n    destino: \"CONF. DE VIAJE\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-5).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización UTE Cordillera ➡️ CONF. DE VIAJE (Alerta ⚠️)\",\n    origen: \"UTE Cordillera Octubre 26\",\n    destino: \"CONF. DE VIAJE OCTUBRE 26\",\n    criterio: \"Columna F con símbolo ⚠️\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-5).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
       },
       "id": "f76cc566-88ca-4380-a6b4-6a0fa5609141",
       "name": "Resumen CONF. DE VIAJE",
@@ -430,13 +430,13 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        592,
-        48
+        512,
+        128
       ]
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 limpiar_vacio.py --apply\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 limpiar_vacio.py --apply\""
       },
       "id": "89e26722-95c1-426d-be8c-c7fad076e818",
       "name": "Ejecutar Limpieza VACIO",
@@ -498,7 +498,7 @@
     },
     {
       "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\diaria && py -3.13 poll_sync_vacio.py --apply --borders\""
+        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 poll_sync_vacio.py --apply --borders\""
       },
       "id": "bdcea852-fb63-4296-a2f6-2e27eb150adc",
       "name": "Ejecutar Polling Inteligente VACIO + Seguimiento",

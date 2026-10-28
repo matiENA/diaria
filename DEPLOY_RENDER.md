@@ -49,6 +49,9 @@ En la pestaña **Environment** de tu servicio en Render, agrega las siguientes v
 | `ENABLE_SCHEDULER` | `true` | Activa el motor de calendarización automática 24/7 de fondo |
 | `PORT` | `10000` | Puerto interno de escucha |
 | `TZ` | `America/Argentina/Buenos_Aires` | Zona horaria para la ejecución precisa de los Cron |
+| `CONF_SPREADSHEET_ID` | `1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU` | ID de la planilla de UTE Cordillera y CONF. DE VIAJE |
+| `CONF_SOURCE_SHEET_NAME` | `UTE Cordillera Octubre 26` | Pestaña de origen en UTE Cordillera |
+| `CONF_TARGET_SHEET_NAME` | `CONF. DE VIAJE OCTUBRE 26` | Pestaña de destino en CONF. DE VIAJE |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | `{...}` | **Contenido completo del archivo JSON de tu Service Account** |
 | `TELEGRAM_BOT_TOKEN` *(opcional)* | `123456:ABC...` | Token del bot provisto por `@BotFather` para recibir alertas |
 | `TELEGRAM_CHAT_ID` *(opcional)* | `123456789` | ID de usuario, grupo o canal donde enviar las notificaciones |
