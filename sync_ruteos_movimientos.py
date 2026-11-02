@@ -1,7 +1,7 @@
 """
 sync_ruteos_movimientos.py
 Sincronización y enriquecimiento de notas en hover (Destinos limpios) desde Ruteos hacia
-la planilla mensual 'OCTUBRE 2026- Mov.Unidades y Choferes'.
+la planilla mensual 'NOVIEMBRE 2026- Mov.Unidades y Choferes'.
 """
 import os
 import re
@@ -30,10 +30,10 @@ from sync_operativas_unificadas import is_valid_td
 
 # IDs de Google Spreadsheet
 DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
-DEFAULT_MOV_ID = "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc"
+DEFAULT_MOV_ID = "1z66kNDjMki1k9csQevuyhfz50dYoHrQro4wPj-Yt-hc"
 
 SOURCE_TAB_RUTEOS = "Ruteos"
-TARGET_TAB_MOV = "OCTUBRE 2026- Mov.Unidades y Choferes"
+TARGET_TAB_MOV = "NOVIEMBRE 2026- Mov.Unidades y Choferes"
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -115,11 +115,8 @@ def parse_day_from_cell(fecha_val: str) -> Optional[int]:
     s = str(fecha_val).strip()
     if s.isdigit():
         serial = int(s)
-        # Serial date 46295 = 2026-10-01
         dt = datetime(1899, 12, 30) + timedelta(days=serial)
-        if dt.year == 2026 and dt.month == 10:
-            return dt.day
-        if dt.month == 10:
+        if 1 <= dt.month <= 12 and 1 <= dt.day <= 31:
             return dt.day
     if "/" in s:
         parts = s.split("/")

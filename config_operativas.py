@@ -26,14 +26,14 @@ CACHE_FILE_PREV_MONTH = BASE_DIR / "cache_ruteos_mes_anterior.json"
 # Valores por defecto de contingencia (Octubre / Septiembre 2026)
 FALLBACK_CONFIG = {
     "mes_actual": {
-        "nombre": "Octubre 2026",
+        "nombre": "Noviembre 2026",
         "ruteos_id": "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o",
         "tab_ruteos": "Ruteos",
-        "movimientos_id": "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc",
-        "tab_movimientos": "OCTUBRE 2026- Mov.Unidades y Choferes",
+        "movimientos_id": "1z66kNDjMki1k9csQevuyhfz50dYoHrQro4wPj-Yt-hc",
+        "tab_movimientos": "NOVIEMBRE 2026- Mov.Unidades y Choferes",
         "conf_viaje_id": "1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU",
         "tab_conf_source": "UTE Cordillera Octubre 26",
-        "tab_conf_target": "CONF. DE VIAJE OCTUBRE 26"
+        "tab_conf_target": "CONF. DE VIAJE NOVIEMBRE 26"
     },
     "mes_anterior": {
         "nombre": "Septiembre 2026",

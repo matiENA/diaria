@@ -64,10 +64,10 @@ from sync_operativas_unificadas import (
 )
 
 DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
-DEFAULT_MOV_ID = "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc"
+DEFAULT_MOV_ID = "1z66kNDjMki1k9csQevuyhfz50dYoHrQro4wPj-Yt-hc"
 
 SOURCE_TAB_RUTEOS = "Ruteos"
-TARGET_TAB_MOV = "OCTUBRE 2026- Mov.Unidades y Choferes"
+TARGET_TAB_MOV = "NOVIEMBRE 2026- Mov.Unidades y Choferes"
 
 # Color de pintado: #9fc5e8
 TARGET_COLOR_HEX = "#9fc5e8"

@@ -6,7 +6,7 @@
 ================================================================================
 Descripción:
   Lee el dato de VACÍO (Columna X / índice 23) desde la pestaña 'Ruteos' y lo inyecta
-  al INICIO de las notas en hover de la hoja 'OCTUBRE 2026- Mov.Unidades y Choferes',
+  al INICIO de las notas en hover de la hoja 'NOVIEMBRE 2026- Mov.Unidades y Choferes',
   separado de la información de tracking de la Columna H.
 
 Reglas:
@@ -44,10 +44,10 @@ from credentials_helper import get_google_credentials, resolve_credentials_file
 from sync_operativas_unificadas import is_valid_td
 
 DEFAULT_RUTEOS_ID = "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o"
-DEFAULT_MOV_ID = "14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc"
+DEFAULT_MOV_ID = "1z66kNDjMki1k9csQevuyhfz50dYoHrQro4wPj-Yt-hc"
 
 SOURCE_TAB_RUTEOS = "Ruteos"
-TARGET_TAB_MOV = "OCTUBRE 2026- Mov.Unidades y Choferes"
+TARGET_TAB_MOV = "NOVIEMBRE 2026- Mov.Unidades y Choferes"
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -81,7 +81,7 @@ def parse_day_from_cell(fecha_val: str) -> Optional[int]:
     if s.isdigit():
         serial = int(s)
         dt = datetime(1899, 12, 30) + timedelta(days=serial)
-        if dt.month == 10:
+        if 1 <= dt.month <= 12 and 1 <= dt.day <= 31:
             return dt.day
     if "/" in s:
         parts = s.split("/")

@@ -51,7 +51,7 @@ const KEY_FILE    = path.join(__dirname, 'ute-logistica-key.json');
 
 function cargarConfig() {
   const porDefecto = {
-    spreadsheetId: '14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc',
+    spreadsheetId: '1z66kNDjMki1k9csQevuyhfz50dYoHrQro4wPj-Yt-hc',
     planillasGuardadas: [],
     colsDispo: [
        29,  42,  55,  68,  81,  94, 107, 120, 133, 146, 159,  // Días 1-11

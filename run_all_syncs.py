@@ -124,6 +124,10 @@ def execute_syncs(
         "limpiar": {
             "title": "7. Limpieza / Reset de VACÍO (Herramienta)",
             "cmd": [PYTHON_EXE, "limpiar_vacio.py"] + (["--apply"] if apply else []) + ["--day", day_str]
+        },
+        "bajas": {
+            "title": "8. Bajas de Diagrama ➡️ Movimientos (Hover Notes)",
+            "cmd": [PYTHON_EXE, "sync_bajas_movimientos.py"] + ([] if apply else ["--dry-run"])
         }
     }
 
@@ -172,15 +176,15 @@ def main():
     parser = argparse.ArgumentParser(description="Orquestador unificado de sincronizaciones diarias")
     parser.add_argument("--apply", action="store_true", help="Escribe los cambios reales en Google Sheets")
     parser.add_argument("--day", type=int, default=None, help="Día del mes a procesar (por defecto: día de hoy)")
-    parser.add_argument("--module", type=str, default="all", choices=["all", "unified", "tracking", "vacio", "seguimiento", "dispo", "cordillera", "conf_viaje", "limpiar"])
+    parser.add_argument("--module", type=str, default="all", choices=["all", "unified", "tracking", "vacio", "seguimiento", "dispo", "cordillera", "conf_viaje", "limpiar", "bajas"])
     parser.add_argument("--daemon", action="store_true", help="Bucle continuo en segundo plano")
     parser.add_argument("--interval", type=int, default=600, help="Intervalo en segundos en modo daemon (def: 600s)")
 
     args = parser.parse_args()
 
-    # Módulos estándar que componen la rutina diaria ('all' ejecuta el motor unificado + disponibilidad + cordillera)
+    # Módulos estándar que componen la rutina diaria ('all' ejecuta el motor unificado + disponibilidad + cordillera + bajas)
     if args.module == "all":
-        selected_modules = ["unified", "dispo", "cordillera", "conf_viaje"]
+        selected_modules = ["unified", "dispo", "cordillera", "conf_viaje", "bajas"]
     else:
         selected_modules = [args.module]
 
