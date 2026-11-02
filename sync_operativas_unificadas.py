@@ -423,6 +423,7 @@ class UnifiedOperativasSync:
         self,
         credentials_path: Optional[str] = None,
         ruteos_id: str = DEFAULT_RUTEOS_ID,
+        tab_ruteos: str = SOURCE_TAB_RUTEOS,
         mov_id: str = DEFAULT_MOV_ID,
         ruteos_anterior_id: str = RUTEOS_ANTERIOR_ID,
         tab_ruteos_anterior: str = SOURCE_TAB_RUTEOS_ANTERIOR,
@@ -431,6 +432,7 @@ class UnifiedOperativasSync:
         target_month: Optional[int] = None
     ):
         self.ruteos_id = ruteos_id
+        self.tab_ruteos = tab_ruteos
         self.mov_id = mov_id
         self.ruteos_anterior_id = ruteos_anterior_id
         self.tab_ruteos_anterior = tab_ruteos_anterior
@@ -523,7 +525,10 @@ class UnifiedOperativasSync:
         if self._cached_curr_rows is None:
             self._cached_curr_rows = self.fetch_ruteos_actual()
         if self._cached_prev_rows is None or force_refresh_prev:
-            self._cached_prev_rows = self.fetch_ruteos_anterior(force_refresh=force_refresh_prev)
+            if self.ruteos_anterior_id == self.ruteos_id and self.tab_ruteos_anterior == self.tab_ruteos:
+                self._cached_prev_rows = self._cached_curr_rows
+            else:
+                self._cached_prev_rows = self.fetch_ruteos_anterior(force_refresh=force_refresh_prev)
         return self._cached_prev_rows, self._cached_curr_rows
 
     def fetch_ruteos(self) -> List[List[str]]:
@@ -647,7 +652,10 @@ class UnifiedOperativasSync:
         # para determinar el ÚLTIMO TD y estado de cada tractor
         tractor_all_trips: Dict[str, List[Dict[str, Any]]] = {}
 
-        chronological_ruteos = prev_ruteos_rows + ruteos_rows
+        if self.ruteos_anterior_id == self.ruteos_id and self.tab_ruteos_anterior == self.tab_ruteos:
+            chronological_ruteos = ruteos_rows
+        else:
+            chronological_ruteos = prev_ruteos_rows + ruteos_rows
 
         for idx, r in enumerate(chronological_ruteos):
             row_num = idx + 4

@@ -23,3 +23,4 @@
 {"timestamp": "2026-10-14T10:04:22.973608", "day": 14, "mode": "Sincronización Unificada en Capas", "apply": true, "duration_sec": 126.53, "notes_count": 2, "borders_count": 0, "paint_count": 1, "clear_count": 0, "applied_ops": 3}
 {"timestamp": "2026-10-22T08:40:45.816354", "day": 22, "mode": "Sincronización Unificada en Capas", "apply": false, "duration_sec": 104.84, "notes_count": 6, "borders_count": 0, "paint_count": 3, "clear_count": 2, "applied_ops": 0}
 {"timestamp": "2026-10-22T08:44:20.465501", "day": 22, "mode": "Sincronización Unificada en Capas", "apply": true, "duration_sec": 197.71, "notes_count": 6, "borders_count": 0, "paint_count": 3, "clear_count": 2, "applied_ops": 11}
+{"timestamp": "2026-11-02T08:28:12.693918", "day": 2, "mode": "Polling Inteligente Unificado Multi-Día", "apply": false, "duration_sec": 225.28, "notes_count": 0, "borders_count": 0, "paint_count": 0, "clear_count": 0, "applied_ops": 0}
