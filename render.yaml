@@ -20,7 +20,7 @@ services:
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
         sync: false # Pega aquí el JSON completo del Service Account en el panel de Render
       - key: DEFAULT_RUTEOS_ID
-        value: 1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o
+        value: 1oIadEZE1vXCOaTjj8USAOAYVwibY5XMfmCaJbp0bqZE
       - key: DEFAULT_MOV_ID
         value: 1z66kNDjMki1k9csQevuyhfz50dYoHrQro4wPj-Yt-hc
       - key: CONF_SPREADSHEET_ID

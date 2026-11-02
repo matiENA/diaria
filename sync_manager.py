@@ -32,8 +32,8 @@ class SyncManager:
         state_file: Path = STATE_FILE
     ):
         self.credentials_path = credentials_path or SERVICE_ACCOUNT_FILE
-        self.seguridad_vial_spreadsheet_id = spreadsheet_id or seguridad_vial_spreadsheet_id
-        self.conf_spreadsheet_id = spreadsheet_id or conf_spreadsheet_id
+        self.seguridad_vial_spreadsheet_id = seguridad_vial_spreadsheet_id
+        self.conf_spreadsheet_id = conf_spreadsheet_id
         self.spreadsheet_id = spreadsheet_id or self.seguridad_vial_spreadsheet_id
         self.state_file = state_file
         self.conf_state_file = CONF_STATE_FILE
@@ -148,6 +148,14 @@ class SyncManager:
         try:
             # 1. Leer UTE Cordillera
             raw_rows = client.read_ute_cordillera_rows()
+            if not raw_rows or len(raw_rows) <= 1:
+                # Fallback de contingencia: si IMPORTRANGE en UTE Cordillera está pendiente de autorización web,
+                # leer directamente de la pestaña SEGURIDA VIAL de la planilla de Ruteos
+                from config import TARGET_SHEET_NAME
+                sv_client = self.get_client(self.seguridad_vial_spreadsheet_id)
+                sv_rows = sv_client.read_ruteos_rows(range_name=f"'{TARGET_SHEET_NAME}'!A1:V")
+                if sv_rows and len(sv_rows) > 1:
+                    raw_rows = sv_rows
 
             # 2. Filtrar y mapear filas
             processed = self.conf_viaje_service.process_rows(raw_rows)

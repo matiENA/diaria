@@ -48,7 +48,7 @@ SERVICE_ACCOUNT_FILE = resolve_credentials_file()
 # IDs de Google Spreadsheet según el módulo correspondiente
 SEGURIDAD_VIAL_SPREADSHEET_ID = os.getenv(
     "SEGURIDAD_VIAL_SPREADSHEET_ID",
-    _mes_act.get("ruteos_id", "1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o")
+    _mes_act.get("ruteos_id", "1oIadEZE1vXCOaTjj8USAOAYVwibY5XMfmCaJbp0bqZE")
 )
 
 CONF_SPREADSHEET_ID = os.getenv(
