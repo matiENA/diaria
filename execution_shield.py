@@ -173,7 +173,7 @@ def generate_audit_report(
         "# 📊 Reporte de Auditoría: Sincronización Operativa Diaria",
         "",
         f"- **Fecha y Hora:** `{now_str}`",
-        f"- **Día Operativo Procesado:** `Día {day} de Octubre`",
+        f"- **Día Operativo Procesado:** `Día {day} de {datetime.now().strftime('%B')}`",
         f"- **Modo de Ejecución:** **{mode_label}**",
         f"- **Motor:** `{mode}`",
         f"- **Duración Total:** `{duration_sec:.2f} segundos`",
@@ -192,7 +192,7 @@ def generate_audit_report(
         "",
         "---",
         "",
-        "## 🔍 Detalle de Celdas Modificadas en 'OCTUBRE 2026- Mov.Unidades y Choferes'",
+        "## 🔍 Detalle de Celdas Modificadas en la Planilla Mensual de Movimientos",
         "",
         "> 💡 **Verificación Visual:** Puedes abrir la planilla y buscar las siguientes coordenadas exactas:",
         ""

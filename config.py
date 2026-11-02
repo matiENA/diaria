@@ -169,11 +169,11 @@ DEFAULT_SYNC_INTERVAL_SECONDS = 300  # 5 minutos
 # ==============================================================================
 CONF_SOURCE_SHEET_NAME = os.getenv(
     "CONF_SOURCE_SHEET_NAME",
-    os.getenv("CONF_SOURCE_TAB", _mes_act.get("tab_conf_source", "UTE Cordillera Octubre 26"))
+    os.getenv("CONF_SOURCE_TAB", _mes_act.get("tab_conf_source", "UTE Cordillera Noviembre 26"))
 )
 CONF_TARGET_SHEET_NAME = os.getenv(
     "CONF_TARGET_SHEET_NAME",
-    os.getenv("CONF_TARGET_TAB", _mes_act.get("tab_conf_target", "CONF. DE VIAJE OCTUBRE 26"))
+    os.getenv("CONF_TARGET_TAB", _mes_act.get("tab_conf_target", "CONF. DE VIAJE NOVIEMBRE 26"))
 )
 CONF_START_ROW = 5  # Los datos se escriben a partir de la fila 5
 

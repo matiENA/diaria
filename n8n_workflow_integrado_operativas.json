@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "# 🚀 Central Operativa Integrada: Flotas, Ruteos, Cordillera & Polling Inteligente\n**Pipeline Unificado de Producción** | Módulos 1 al 7 + **Motor de Polling Inteligente (Gatekeeper + Merge)**\nSincronización automatizada entre *Ruteos* y *OCTUBRE 2026- Mov.Unidades y Choferes* con protección de cuota API.",
+        "content": "# 🚀 Central Operativa Integrada: Flotas, Ruteos, Cordillera & Polling Inteligente\n**Pipeline Unificado de Producción** | Módulos 1 al 7 + **Motor de Polling Inteligente (Gatekeeper + Merge)**\nSincronización automatizada entre *Ruteos* y *NOVIEMBRE 2026- Mov.Unidades y Choferes* con protección de cuota API.",
         "height": 280,
         "width": 1720,
         "color": 6
@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "content": "### 🌐 ORQUESTADOR GLOBAL\nDisparador maestro para ejecutar **todas** las tareas del circuito operativo en lote con un solo clic.\n\n> 💡 **Uso:** Haz clic en *\"Test step\"* en el Disparador Maestro para correr la sincronización global de las 6 tareas operativas.\n>\n> Cada carril individual también cuenta con su propio disparador manual aislado.",
+        "content": "### 🌐 ORQUESTADOR GLOBAL\nDisparador maestro para ejecutar **todas** las tareas del circuito operativo en lote con un solo clic.\n\n> 💡 **Uso:** Haz clic en *\"Test step\"* en el Disparador Maestro para correr la sincronización global de las tareas operativas de Noviembre (Polling en Capas + Cordillera + CONF. DE VIAJE + Disponibilidad).\n>\n> Cada carril individual también cuenta con su propio disparador manual aislado.",
         "height": 2720,
         "width": 330,
         "color": 7
@@ -42,195 +42,6 @@
       "position": [
         272,
         -1360
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 📍 TAREA 1: HOVER TRACKING (RUTEOS ➡️ MOVIMIENTOS)\n- **Origen:** Planilla Ruteos (`1-wNLgr2b1TibP_MPwA9ToF9jlH_jiPxjN0iirWbFb3o`), Col H (Tracking).\n- **Destino:** Planilla Mensual Movimientos (`14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc`).\n- **Regla:** Mapea destinos limpios y ranuras de camión (doble ranura por día) en notas hover. Preserva encabezados de VACÍO.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 sync_ruteos_movimientos.py --apply`",
-        "height": 340,
-        "width": 1350,
-        "color": 4
-      },
-      "id": "78fb9765-36d7-4d03-a9ed-7819f6461529",
-      "name": "Nota: Tarea 1 - Tracking Hover",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        592,
-        -2688
-      ]
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 15
-            }
-          ]
-        }
-      },
-      "id": "a59de5ef-b113-437a-980a-9e72e9397ca8",
-      "name": "⏰ Cron: Tracking Hover (Cada 15m)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        640,
-        -2496
-      ],
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 sync_ruteos_movimientos.py --apply\""
-      },
-      "id": "9ae3cd65-d7d9-4580-b316-65b60f033e0c",
-      "name": "Ejecutar Sync Tracking (Col H)",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        1024,
-        -2576
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización Tracking Hover (Col H)\",\n    origen: \"Ruteos (Col H)\",\n    destino: \"Movimientos Unidades y Choferes\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-4).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
-      },
-      "id": "3263ceeb-7a0c-4839-8ba2-f5d456dc5262",
-      "name": "Resumen Tracking (Col H)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1424,
-        -2576
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 📦 TAREA 2: VACÍO CON BORDES (RUTEOS ➡️ MOVIMIENTOS)\n- **Origen:** Planilla Ruteos, Col X (Reporte de Vacío).\n- **Destino:** Planilla Mensual Movimientos.\n- **Regla:** Antepone `VACIO [fecha hora]` al inicio de la nota y aplica bordes dobles `SOLID_MEDIUM` (inferior e izquierdo) para detección visual inmediata. Preserva el texto de tracking inferior.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 sync_vacio.py --apply --borders`",
-        "height": 340,
-        "width": 1350,
-        "color": 5
-      },
-      "id": "4e93d220-21ca-4a5b-98d7-1dd9ec6efadb",
-      "name": "Nota: Tarea 2 - VACÍO con Bordes",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        592,
-        -1920
-      ]
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 20
-            }
-          ]
-        }
-      },
-      "id": "bd09daf4-29f7-4813-b863-a7d79115e13c",
-      "name": "⏰ Cron: VACIO Bordes (Cada 20m)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        640,
-        -1712
-      ],
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 sync_vacio.py --apply --borders\""
-      },
-      "id": "bf838ca9-8806-4275-83ad-17b7c99ccd50",
-      "name": "Ejecutar Sync VACIO (Col X)",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        1024,
-        -1792
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización VACÍO con Bordes (Col X)\",\n    origen: \"Ruteos (Col X)\",\n    destino: \"Movimientos Unidades y Choferes\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-4).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
-      },
-      "id": "a7f5a6cf-aade-4e61-b750-c5125083ead2",
-      "name": "Resumen VACIO (Col X)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1424,
-        -1792
-      ]
-    },
-    {
-      "parameters": {
-        "content": "## 🔍 TAREA 3: SEGUIMIENTO VACÍO (SIN NUEVO TD ➡️ PINTADO #9fc5e8)\n- **Origen:** Planilla Ruteos, Col X (Reporte de Vacío) + Col L (Último TD del tractor).\n- **Destino:** Planilla Mensual Movimientos, celda del día operativo.\n- **Regla:** Si un tractor reportó VACÍO y aún NO posee un nuevo viaje/TD asignado, y la columna 'Dispo.' no está en localidades excluidas (`dock sud, tds, tlc, tlp, tvm, pp...`), pinta la celda en celeste `#9fc5e8`. Si se asigna un nuevo viaje o cambia Dispo, se limpia automáticamente restaurando el fondo base.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 sync_seguimiento_vacio.py --apply`",
-        "height": 340,
-        "width": 1350,
-        "color": 5
-      },
-      "id": "e78ff779-4636-4c49-b56a-f689c57093a8",
-      "name": "Nota: Tarea 3 - Seguimiento Vacío (#9fc5e8)",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        592,
-        -1520
-      ]
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 15
-            }
-          ]
-        }
-      },
-      "id": "ce28b4b7-2baf-4089-ae09-8e7c18d1fa01",
-      "name": "⏰ Cron: Seguimiento Vacío (Cada 15m)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        640,
-        -1328
-      ],
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "command": "cmd /c \"cd /d C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias && py -3.13 sync_seguimiento_vacio.py --apply\""
-      },
-      "id": "b52138fe-a60e-45fa-a24a-210fc520fbcf",
-      "name": "Ejecutar Sync Seguimiento Vacío",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        1024,
-        -1408
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización Seguimiento Vacío (#9fc5e8)\",\n    origen: \"Ruteos (Col X & Col L)\",\n    destino: \"Movimientos Unidades (Celeste #9fc5e8)\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-4).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
-      },
-      "id": "fc746ccf-acc6-4d97-9eb2-c71104b30857",
-      "name": "Resumen Seguimiento Vacío",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1424,
-        -1408
       ]
     },
     {
@@ -358,7 +169,7 @@
     },
     {
       "parameters": {
-        "content": "## 📋 TAREA 6: UTE CORDILLERA ➡️ CONF. DE VIAJE\n- **Origen:** Pestaña `UTE Cordillera Octubre 26` (`1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU`).\n- **Destino:** Pestaña `CONF. DE VIAJE OCTUBRE 26` (desde fila 5, Cols A:J).\n- **Regla:** Viaje completo por TD (Col I) si contiene símbolo ⚠️ en Columna F (Marca Temp - Respuesta). Escribe 10 columnas limpias con cliente formateado.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias`\n- **Comando:** `py -3.13 main.py --conf-viaje`",
+        "content": "## 📋 TAREA 6: UTE CORDILLERA ➡️ CONF. DE VIAJE\n- **Origen:** Pestaña `UTE Cordillera Noviembre 26` (`1bK99AJp7O1jluupQeM5lsH8Gu5QfT--HXWTNzMft9tU`).\n- **Destino:** Pestaña `CONF. DE VIAJE NOVIEMBRE 26` (desde fila 5, Cols A:J).\n- **Regla:** Viaje completo por TD (Col I) si contiene símbolo ⚠️ en Columna F (Marca Temp - Respuesta). Escribe 10 columnas limpias con cliente formateado.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\server_local\\operativas_diarias`\n- **Comando:** `py -3.13 main.py --conf-viaje`",
         "height": 340,
         "width": 1350,
         "color": 6
@@ -407,7 +218,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización UTE Cordillera ➡️ CONF. DE VIAJE (Alerta ⚠️)\",\n    origen: \"UTE Cordillera Octubre 26\",\n    destino: \"CONF. DE VIAJE OCTUBRE 26\",\n    criterio: \"Columna F con símbolo ⚠️\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-5).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const item = $input.first().json;\nconst stdout = item.stdout || \"\";\nconst stderr = item.stderr || \"\";\nconst exitCode = item.exitCode ?? 0;\nconst lines = stdout.split(\"\\n\").map(l => l.trim()).filter(Boolean);\n\nreturn [{\n  json: {\n    tarea: \"Sincronización UTE Cordillera ➡️ CONF. DE VIAJE (Alerta ⚠️)\",\n    origen: \"UTE Cordillera Noviembre 26\",\n    destino: \"CONF. DE VIAJE NOVIEMBRE 26\",\n    criterio: \"Columna F con símbolo ⚠️\",\n    estado: exitCode === 0 ? \"EXITOSO\" : \"FALLIDO\",\n    exitCode,\n    resumen: lines.slice(-5).join(\" | \"),\n    logCompleto: stdout,\n    errores: stderr,\n    ejecutadoEn: new Date().toISOString()\n  }\n}];"
       },
       "id": "f76cc566-88ca-4380-a6b4-6a0fa5609141",
       "name": "Resumen CONF. DE VIAJE",
@@ -420,7 +231,7 @@
     },
     {
       "parameters": {
-        "content": "## 🧹 TAREA 7: LIMPIEZA DE VACÍO Y RESET (MOVIMIENTOS)\n- **Destino:** Planilla Mensual Movimientos (`14Mb5rD853zxDkaLDS-IrW-OBDTDBjuJxn_3olXeWlkc`).\n- **Propósito:** Herramienta administrativa para limpiar o resetear encabezados de VACÍO y bordes en hover notes ante arreglos de sheets o corrección de falsos positivos. Preserva intacto el tracking de Col H.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 limpiar_vacio.py --apply`\n\n*⚠️ Este carril posee únicamente DISPARADOR MANUAL INDIVIDUAL para evitar limpiezas accidentales no supervisadas. No está vinculado a ningún cron automático ni al orquestador general.*",
+        "content": "## 🧹 TAREA 7: LIMPIEZA DE VACÍO Y RESET (MOVIMIENTOS)\n- **Destino:** Planilla Mensual Movimientos (`1z66kNDjMki1k9csQevuyhfz50dYoHrQro4wPj-Yt-hc`).\n- **Propósito:** Herramienta administrativa para limpiar o resetear encabezados de VACÍO y bordes en hover notes ante arreglos de sheets o corrección de falsos positivos. Preserva intacto el tracking de Col H.\n- **Directorio:** `C:\\Users\\Matias Rodriguez\\Documents\\diaria`\n- **Comando:** `py -3.13 limpiar_vacio.py --apply`\n\n*⚠️ Este carril posee únicamente DISPARADOR MANUAL INDIVIDUAL para evitar limpiezas accidentales no supervisadas. No está vinculado a ningún cron automático ni al orquestador general.*",
         "height": 340,
         "width": 1350,
         "color": 3
@@ -524,72 +335,6 @@
     }
   ],
   "connections": {
-    "⏰ Cron: Tracking Hover (Cada 15m)": {
-      "main": [
-        [
-          {
-            "node": "Ejecutar Sync Tracking (Col H)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ejecutar Sync Tracking (Col H)": {
-      "main": [
-        [
-          {
-            "node": "Resumen Tracking (Col H)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "⏰ Cron: VACIO Bordes (Cada 20m)": {
-      "main": [
-        [
-          {
-            "node": "Ejecutar Sync VACIO (Col X)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ejecutar Sync VACIO (Col X)": {
-      "main": [
-        [
-          {
-            "node": "Resumen VACIO (Col X)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "⏰ Cron: Seguimiento Vacío (Cada 15m)": {
-      "main": [
-        [
-          {
-            "node": "Ejecutar Sync Seguimiento Vacío",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ejecutar Sync Seguimiento Vacío": {
-      "main": [
-        [
-          {
-            "node": "Resumen Seguimiento Vacío",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "⏰ Cron: Disponibilidad (Diario 06:00 AM)": {
       "main": [
         [
@@ -663,6 +408,16 @@
             "node": "Ejecutar Polling Inteligente VACIO + Seguimiento",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Ejecutar Sync Viajes Cordillera",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ejecutar Sync CONF. DE VIAJE",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -702,10 +457,6 @@
     }
   },
   "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false
-  },
-  "active": true,
-  "updatedAt": "2026-10-13T10:24:45.336179"
+    "executionOrder": "v1"
+  }
 }
